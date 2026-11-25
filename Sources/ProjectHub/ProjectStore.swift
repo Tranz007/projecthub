@@ -44,6 +44,7 @@ final class ProjectStore: ObservableObject {
     }
 
     private var refreshTimer: Timer?
+    private var scanGeneration = 0
     private let settingsURL: URL
     private let preferences: UserDefaults
 
@@ -55,7 +56,6 @@ final class ProjectStore: ObservableObject {
             && !preferences.bool(forKey: "welcomeCompleted")
         loadSettings()
         if let scanFolders { settings.scanFolders = scanFolders }
-        refreshProjects()
         refreshPortSnapshot()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in Task { @MainActor in self?.refreshPortSnapshot() } }
     }
@@ -76,9 +76,28 @@ final class ProjectStore: ObservableObject {
     }
 
     func refreshProjects() {
-        var folders = settings.projectFolders.map { URL(filePath: $0) }
+        scanGeneration += 1
+        let generation = scanGeneration
+        let scanFolders = settings.scanFolders
+        let projectFolders = settings.projectFolders
+        Task.detached(priority: .utility) { [weak self] in
+            let result = Self.scanProjects(scanFolders: scanFolders, projectFolders: projectFolders)
+            await self?.applyScan(result, generation: generation)
+        }
+    }
+
+    private func applyScan(_ result: (projects: [Project], inaccessible: [String]), generation: Int) {
+        guard scanGeneration == generation else { return }
+        projects = result.projects
+        if !result.inaccessible.isEmpty {
+            alert = AppAlert(title: "Cannot read project folders", message: "Check access to: \(result.inaccessible.joined(separator: ", "))")
+        }
+    }
+
+    nonisolated private static func scanProjects(scanFolders: [String], projectFolders: [String]) -> (projects: [Project], inaccessible: [String]) {
+        var folders = projectFolders.map { URL(filePath: $0) }
         var inaccessible: [String] = []
-        for root in settings.scanFolders {
+        for root in scanFolders {
             do {
                 folders += try FileManager.default.contentsOfDirectory(
                     at: URL(filePath: root), includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]
@@ -87,12 +106,8 @@ final class ProjectStore: ObservableObject {
                 inaccessible.append(root)
             }
         }
-        if !inaccessible.isEmpty {
-            alert = AppAlert(title: "Cannot read project folders", message: "Check access to: \(inaccessible.joined(separator: ", "))")
-        }
-
         var seenPaths = Set<String>()
-        projects = folders.filter { seenPaths.insert($0.standardizedFileURL.path()).inserted }.compactMap { folder -> Project? in
+        let projects = folders.filter { seenPaths.insert($0.standardizedFileURL.path()).inserted }.compactMap { folder -> Project? in
             guard (try? folder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { return nil }
             let packageURL = folder.appending(path: "package.json")
             let pythonURL = folder.appending(path: "pyproject.toml")
@@ -119,6 +134,7 @@ final class ProjectStore: ObservableObject {
                 defaultCommand: defaultCommand, defaultPort: 3000 + order
             )
         }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return (projects, inaccessible)
     }
 
     func setting(for project: Project) -> ProjectSettings { settings.projects[project.id] ?? ProjectSettings() }
@@ -397,7 +413,7 @@ final class ProjectStore: ObservableObject {
     }
 
     private struct PackageFile: Decodable { let description: String?; let scripts: [String: String]?; let dependencies: [String: String]?; let devDependencies: [String: String]? }
-    private static func readPackage(at url: URL) -> PackageFile? {
+    nonisolated private static func readPackage(at url: URL) -> PackageFile? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(PackageFile.self, from: data)
     }
@@ -422,11 +438,11 @@ final class ProjectStore: ObservableObject {
         for candidate in port..<(port + 100) where !portIsBusy(candidate) { return candidate }
         return nil
     }
-    private static func defaultCommand(package: PackageFile?) -> String? {
+    nonisolated private static func defaultCommand(package: PackageFile?) -> String? {
         guard package?.scripts?["dev"] != nil else { return nil }
         return "npm run dev -- --port {port}"
     }
-    private static func techSummary(package: PackageFile?, hasPackage: Bool, hasPython: Bool, isFastAPI: Bool) -> String {
+    nonisolated private static func techSummary(package: PackageFile?, hasPackage: Bool, hasPython: Bool, isFastAPI: Bool) -> String {
         let dependencies = Set(Array((package?.dependencies ?? [:]).keys) + Array((package?.devDependencies ?? [:]).keys))
         if dependencies.contains("next") { return dependencies.contains("typescript") ? "Next.js · TypeScript" : "Next.js" }
         if dependencies.contains("vite") {
@@ -439,7 +455,7 @@ final class ProjectStore: ObservableObject {
         if hasPackage { return "Node.js" }
         return "-"
     }
-    private static func githubURL(_ raw: String) -> URL? {
+    nonisolated private static func githubURL(_ raw: String) -> URL? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         let https = trimmed.replacingOccurrences(of: "git@github.com:", with: "https://github.com/").replacingOccurrences(of: ".git", with: "")
         return https.hasPrefix("https://github.com/") ? URL(string: https) : nil

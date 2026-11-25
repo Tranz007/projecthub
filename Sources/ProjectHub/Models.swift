@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-struct Project: Identifiable, Hashable {
+struct Project: Identifiable, Hashable, Sendable {
     let id: String
     let name: String
     let path: URL
@@ -14,7 +14,7 @@ struct Project: Identifiable, Hashable {
     let defaultCommand: String?
     let defaultPort: Int
 
-    enum ProjectKind: String, Codable, CaseIterable {
+    enum ProjectKind: String, Codable, CaseIterable, Sendable {
         case node = "Node"
         case python = "Python"
         case mixed = "Mixed"

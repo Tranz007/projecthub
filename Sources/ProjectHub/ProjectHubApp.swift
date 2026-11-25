@@ -26,7 +26,10 @@ struct ProjectHubApp: App {
             ContentView().environmentObject(store)
                 .frame(minWidth: 1100, minHeight: 700)
                 .preferredColorScheme(.dark)
-                .onAppear { appDelegate.store = store }
+                .onAppear {
+                    appDelegate.store = store
+                    DispatchQueue.main.async { store.refreshProjects() }
+                }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                     store.refreshProjects()
                 }

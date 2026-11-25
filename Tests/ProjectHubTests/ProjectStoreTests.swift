@@ -22,10 +22,17 @@ final class ProjectStoreTests: XCTestCase {
         try FileManager.default.removeItem(at: settingsURL)
         XCTAssertFalse(ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences).needsWelcome)
         XCTAssertTrue(store.addProject(projectFolder))
+        for _ in 0..<100 where store.projects.isEmpty {
+            try await Task.sleep(for: .milliseconds(50))
+        }
         let project = try XCTUnwrap(store.projects.first)
         XCTAssertEqual(project.path.standardizedFileURL, projectFolder.standardizedFileURL)
         XCTAssertEqual(store.port(for: project), project.defaultPort)
         let restored = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
+        restored.refreshProjects()
+        for _ in 0..<100 where restored.projects.isEmpty {
+            try await Task.sleep(for: .milliseconds(50))
+        }
         XCTAssertEqual(restored.projects.first?.id, project.id)
         XCTAssertEqual(store.serverHealth(for: project).label, "-")
         store.save(project: project, command: "echo fixture failure; sleep 1; exit 7", favorite: false, hostingProvider: .none, hostedURL: "")
@@ -46,6 +53,10 @@ final class ProjectStoreTests: XCTestCase {
 
         store.save(project: project, command: "sleep 30", favorite: false, hostingProvider: .vercel, hostedURL: "https://example.vercel.app")
         let reloaded = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
+        reloaded.refreshProjects()
+        for _ in 0..<100 where reloaded.projects.isEmpty {
+            try await Task.sleep(for: .milliseconds(50))
+        }
         XCTAssertEqual(reloaded.setting(for: project).hostingProvider, .vercel)
         XCTAssertEqual(reloaded.setting(for: project).hostedURL, "https://example.vercel.app")
         store.start(project)
