@@ -7,10 +7,12 @@ struct ProjectTitle: View {
     @State private var showingDetails = false
 
     var body: some View {
-        Text(project.name)
-        .font(.system(size: size, weight: .semibold))
-        .lineLimit(1)
-        .contentShape(Rectangle())
+        Button { showingDetails = true } label: {
+            Text(project.name)
+                .font(.system(size: size, weight: .semibold))
+                .lineLimit(1)
+        }
+        .buttonStyle(.plain)
         .help(project.hoverDetail)
         .onHover { showingDetails = $0 }
         .popover(isPresented: $showingDetails, arrowEdge: .bottom) {
@@ -42,9 +44,12 @@ struct RepoBadge: View {
 
     var body: some View {
         if project.changedFiles != nil {
-            RepoIcon(name: project.repositoryURL == nil ? "git" : "github")
-            .frame(width: 24, height: 24)
-            .contentShape(Rectangle())
+            Button { showingDetails = true } label: {
+                RepoIcon(name: project.repositoryURL == nil ? "git" : "github")
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
             .help(detail)
             .accessibilityLabel(project.repositoryURL == nil ? "Git details" : "GitHub repository details")
             .onHover { showingDetails = $0 }

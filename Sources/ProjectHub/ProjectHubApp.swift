@@ -26,6 +26,7 @@ struct ProjectHubApp: App {
             ContentView().environmentObject(store)
                 .frame(minWidth: 1100, minHeight: 700)
                 .preferredColorScheme(.dark)
+                .onAppear { appDelegate.store = store }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                     store.refreshProjects()
                 }
@@ -41,6 +42,11 @@ struct ProjectHubApp: App {
                         Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text("OK")))
                     }
                 }
+                .sheet(isPresented: $store.needsWelcome) {
+                    ProjectSourceView(welcome: true)
+                        .environmentObject(store)
+                        .interactiveDismissDisabled()
+                }
         }
         .defaultSize(width: 1440, height: 900)
         .defaultPosition(.center)
@@ -53,8 +59,14 @@ struct ProjectHubApp: App {
 }
 
 private final class ProjectHubAppDelegate: NSObject, NSApplicationDelegate {
+    weak var store: ProjectStore?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         ProjectHubWindowLayout.apply(after: 0.2)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        store?.stopAll()
     }
 }
 
@@ -114,8 +126,22 @@ struct ContentView: View {
                                 }.frame(width: 150)
                             }
                             Spacer()
+                            Menu {
+                                Button("Add Project…") { chooseProject() }
+                                Button("Choose Folder…") { chooseFolder() }
+                            } label: {
+                                Label("Add", systemImage: "plus")
+                            }
+                            .fixedSize()
                         }
-                        if projectLayout == "Cards" {
+                        if store.projects.isEmpty {
+                            ProjectSourceView(welcome: false)
+                                .environmentObject(store)
+                        } else if store.visibleProjects.isEmpty {
+                            Text("No projects match your search or filter.")
+                                .foregroundStyle(.secondary)
+                                .padding(.vertical, 30)
+                        } else if projectLayout == "Cards" {
                             ProjectCards(projects: store.visibleProjects, width: geometry.size.width - 60, columns: cardColumns)
                         } else {
                             ScrollView(.horizontal) {
@@ -130,6 +156,17 @@ struct ContentView: View {
             }
         }
         .background(Color(red: 0.055, green: 0.068, blue: 0.078))
+    }
+
+    private func chooseFolder() {
+        for folder in ProjectPicker.chooseFolders(multiple: true, prompt: "Choose") {
+            store.addScanFolder(folder)
+        }
+    }
+
+    private func chooseProject() {
+        guard let folder = ProjectPicker.chooseFolders(multiple: false, prompt: "Add Project").first else { return }
+        store.addProject(folder)
     }
 }
 
@@ -265,12 +302,14 @@ private struct ProjectRow: View {
             TechStack(technologies: project.technologies).frame(width: TableColumns.tech, alignment: .leading)
             RepoBadge(project: project).frame(width: TableColumns.repository, alignment: .leading)
             VStack(alignment: .leading, spacing: 5) {
-                if store.command(for: project) == nil && !status.isRunning {
+                if let exit = store.serviceExits[project.id] {
+                    HStack(spacing: 7) { Circle().fill(.red).frame(width: 8, height: 8); Text(exit.label).foregroundStyle(.red) }
+                } else if store.command(for: project) == nil && !status.isRunning {
                     Text("-").foregroundStyle(.secondary)
                 } else {
                     HStack(spacing: 7) { Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 8, height: 8); Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : "Stopped") }
                 }
-                if status.isRunning || store.recentOutput[project.id]?.isEmpty == false {
+                if status.isRunning || store.serviceExits[project.id] != nil || store.recentOutput[project.id]?.isEmpty == false {
                     HStack(spacing: 10) {
                         if status.ready, let port = status.port {
                             Button("localhost:\(port)") { store.openURL(for: project) }.buttonStyle(.link)

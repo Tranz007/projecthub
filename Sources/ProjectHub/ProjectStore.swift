@@ -8,6 +8,8 @@ final class ProjectStore: ObservableObject {
     @Published private(set) var projects: [Project] = []
     @Published private(set) var running: [String: RunningService] = [:]
     @Published private(set) var recentOutput: [String: String] = [:]
+    @Published private(set) var serviceExits: [String: ServiceExit] = [:]
+    @Published var needsWelcome = false
     @Published var search = ""
     @Published var selectedFilter: Filter = .all
     @Published var settings = SavedSettings()
@@ -42,9 +44,14 @@ final class ProjectStore: ObservableObject {
     }
 
     private var refreshTimer: Timer?
+    private let settingsURL: URL
 
-    init() {
+    init(settingsURL: URL? = nil, scanFolders: [String]? = nil) {
+        self.settingsURL = settingsURL ?? FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Application Support/ProjectHub/settings.json")
+        needsWelcome = !FileManager.default.fileExists(atPath: self.settingsURL.path())
         loadSettings()
+        if let scanFolders { settings.scanFolders = scanFolders }
         refreshProjects()
         refreshPortSnapshot()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in Task { @MainActor in self?.refreshPortSnapshot() } }
@@ -66,7 +73,7 @@ final class ProjectStore: ObservableObject {
     }
 
     func refreshProjects() {
-        var folders: [URL] = []
+        var folders = settings.projectFolders.map { URL(filePath: $0) }
         var inaccessible: [String] = []
         for root in settings.scanFolders {
             do {
@@ -119,6 +126,34 @@ final class ProjectStore: ObservableObject {
         settings.scanFolders.append(path)
         persistSettings()
         refreshProjects()
+    }
+
+    @discardableResult func addProject(_ url: URL) -> Bool {
+        let folder = url.standardizedFileURL
+        let path = folder.path()
+        guard (try? folder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true,
+              [".git", "package.json", "pyproject.toml"].contains(where: {
+                  FileManager.default.fileExists(atPath: folder.appending(path: $0).path())
+              }) else {
+            alert = AppAlert(title: "Not a project folder", message: "Choose a folder containing .git, package.json, or pyproject.toml.")
+            return false
+        }
+        guard !settings.projectFolders.contains(path) else { return true }
+        settings.projectFolders.append(path)
+        persistSettings()
+        refreshProjects()
+        return true
+    }
+
+    func removeProject(_ path: String) {
+        settings.projectFolders.removeAll { $0 == path }
+        persistSettings()
+        refreshProjects()
+    }
+
+    func completeWelcome() {
+        needsWelcome = false
+        persistSettings()
     }
 
     func removeScanFolder(_ path: String) {
@@ -181,36 +216,52 @@ final class ProjectStore: ObservableObject {
         process.standardOutput = output
         process.standardError = output
         let id = project.id
+        let projectName = project.name
+        let runID = UUID().uuidString
+        serviceExits.removeValue(forKey: id)
         recentOutput[id] = ""
         output.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
             Task { @MainActor in
-                guard var service = self?.running[id] else { return }
+                guard var service = self?.running[id], service.id == runID else { return }
                 service.output = String((service.output + text).suffix(12_000))
                 self?.running[id] = service
                 self?.recentOutput[id] = service.output
             }
         }
-        process.terminationHandler = { [weak self] _ in
+        process.terminationHandler = { [weak self] finished in
             output.fileHandleForReading.readabilityHandler = nil
-            Task { @MainActor in self?.running.removeValue(forKey: id) }
+            Task { @MainActor in
+                guard let self, self.running[id]?.id == runID else { return }
+                self.running.removeValue(forKey: id)
+                let exit = ServiceExit(code: finished.terminationStatus, reason: finished.terminationReason, command: command, port: chosenPort)
+                self.serviceExits[id] = exit
+                self.alert = AppAlert(title: "\(projectName) server stopped", message: "\(exit.label). Open Logs for details.")
+            }
         }
         do {
             try process.run()
-            running[project.id] = RunningService(id: UUID().uuidString, projectID: project.id, port: chosenPort, command: command, process: process, startedAt: .now)
+            running[project.id] = RunningService(id: runID, projectID: project.id, port: chosenPort, command: command, process: process, startedAt: .now)
         } catch {
             alert = AppAlert(title: "Could not start \(project.name)", message: error.localizedDescription)
         }
     }
 
     func stop(_ project: Project) {
-        guard let service = running[project.id] else { return }
+        stopService(project.id)
+    }
+
+    func stopAll() {
+        for id in Array(running.keys) { stopService(id) }
+    }
+
+    private func stopService(_ id: String) {
+        guard let service = running.removeValue(forKey: id) else { return }
         for child in Self.descendants(of: service.process.processIdentifier).reversed() {
             kill(child, SIGTERM)
         }
-        service.process.terminate()
-        running.removeValue(forKey: project.id)
+        if service.process.isRunning { service.process.terminate() }
     }
 
     var aiToolLabel: String { settings.aiTool == "Custom" ? "AI tool" : settings.aiTool }
@@ -298,11 +349,6 @@ final class ProjectStore: ObservableObject {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         guard let data = try? JSONEncoder().encode(settings) else { return }
         try? data.write(to: settingsURL, options: .atomic)
-    }
-
-    private var settingsURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: "Library/Application Support/ProjectHub/settings.json")
     }
 
     private struct PackageFile: Decodable { let description: String?; let scripts: [String: String]?; let dependencies: [String: String]?; let devDependencies: [String: String]? }

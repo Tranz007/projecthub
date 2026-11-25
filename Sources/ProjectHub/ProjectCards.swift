@@ -43,7 +43,10 @@ private struct ProjectCard: View {
             }
             Spacer(minLength: 0)
             HStack {
-                if store.command(for: project) == nil && !status.isRunning {
+                if let exit = store.serviceExits[project.id] {
+                    Circle().fill(.red).frame(width: 7, height: 7)
+                    Text(exit.label).foregroundStyle(.red)
+                } else if store.command(for: project) == nil && !status.isRunning {
                     Text("-")
                 } else {
                     Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 7, height: 7)
@@ -53,7 +56,7 @@ private struct ProjectCard: View {
                 if status.ready {
                     Button("Open site") { store.openURL(for: project) }.buttonStyle(.link)
                 }
-                if status.isRunning || store.recentOutput[project.id]?.isEmpty == false {
+                if status.isRunning || store.serviceExits[project.id] != nil || store.recentOutput[project.id]?.isEmpty == false {
                     Button("Logs") { showingLogs = true }.buttonStyle(.link)
                 }
             }.font(.caption).foregroundStyle(.secondary)

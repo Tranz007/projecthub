@@ -19,9 +19,29 @@ struct SettingsView: View {
                             }.buttonStyle(.plain).accessibilityLabel("Remove \(path)")
                         }
                     }
-                    Button("Add folder…") { chooseFolder() }
+                    Button("Add folder…") {
+                        for url in ProjectPicker.chooseFolders(multiple: true, prompt: "Add") {
+                            store.addScanFolder(url)
+                        }
+                    }
                     if store.settings.scanFolders.isEmpty {
                         Text("Add a folder to discover projects.").foregroundStyle(.secondary)
+                    }
+                }
+                Section("Individual projects") {
+                    ForEach(store.settings.projectFolders, id: \.self) { path in
+                        HStack {
+                            Text(path).lineLimit(1).truncationMode(.middle)
+                            Spacer()
+                            Button(role: .destructive) { store.removeProject(path) } label: {
+                                Image(systemName: "minus.circle")
+                            }.buttonStyle(.plain).accessibilityLabel("Remove \(path)")
+                        }
+                    }
+                    Button("Add project…") {
+                        for url in ProjectPicker.chooseFolders(multiple: false, prompt: "Add Project") {
+                            store.addProject(url)
+                        }
                     }
                 }
             }
@@ -53,16 +73,5 @@ struct SettingsView: View {
         .onChange(of: store.settings.customEditorPath) { _, _ in store.savePreferences() }
         .onChange(of: store.settings.aiTool) { _, _ in store.savePreferences() }
         .onChange(of: store.settings.customAICommand) { _, _ in store.savePreferences() }
-    }
-
-    private func chooseFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = true
-        panel.prompt = "Add"
-        if panel.runModal() == .OK {
-            for url in panel.urls { store.addScanFolder(url) }
-        }
     }
 }

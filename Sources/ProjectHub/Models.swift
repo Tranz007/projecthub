@@ -58,6 +58,7 @@ struct ProjectSettings: Codable, Hashable {
 struct SavedSettings: Codable {
     var projects: [String: ProjectSettings] = [:]
     var scanFolders: [String] = [FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop").path()]
+    var projectFolders: [String] = []
     var preferredEditor = "Cursor"
     var customEditorPath = ""
     var aiTool = "Codex"
@@ -65,13 +66,14 @@ struct SavedSettings: Codable {
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case projects, scanFolders, preferredEditor, customEditorPath, aiTool, customAICommand }
+    private enum CodingKeys: String, CodingKey { case projects, scanFolders, projectFolders, preferredEditor, customEditorPath, aiTool, customAICommand }
 
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         projects = try values.decodeIfPresent([String: ProjectSettings].self, forKey: .projects) ?? [:]
         scanFolders = try values.decodeIfPresent([String].self, forKey: .scanFolders)
             ?? [FileManager.default.homeDirectoryForCurrentUser.appending(path: "Desktop").path()]
+        projectFolders = try values.decodeIfPresent([String].self, forKey: .projectFolders) ?? []
         preferredEditor = try values.decodeIfPresent(String.self, forKey: .preferredEditor) ?? "Cursor"
         customEditorPath = try values.decodeIfPresent(String.self, forKey: .customEditorPath) ?? ""
         aiTool = try values.decodeIfPresent(String.self, forKey: .aiTool) ?? "Codex"
@@ -87,4 +89,15 @@ struct RunningService: Identifiable {
     let process: Process
     var startedAt: Date
     var output = ""
+}
+
+struct ServiceExit {
+    let code: Int32
+    let reason: Process.TerminationReason
+    let command: String
+    let port: Int
+
+    var label: String {
+        reason == .uncaughtSignal ? "Stopped by signal \(code)" : "Exited (code \(code))"
+    }
 }

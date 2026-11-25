@@ -51,9 +51,12 @@ private struct TechnologyBadge: View {
     }
 
     var body: some View {
-        TechIcon(name: assetName)
-            .frame(width: 24, height: 24)
-            .contentShape(Rectangle())
+        Button { showingDetails = true } label: {
+            TechIcon(name: assetName)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
             .help(name)
             .accessibilityLabel(name)
             .onHover { showingDetails = $0 }

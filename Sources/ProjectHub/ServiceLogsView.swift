@@ -14,13 +14,16 @@ struct ServiceLogsView: View {
                     if let service = store.running[project.id] {
                         Text("Port \(service.port) · \(service.command)")
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    } else if let exit = store.serviceExits[project.id] {
+                        Text("\(exit.label) · port \(exit.port) · \(exit.command)")
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
                 Spacer()
                 Button("Close") { dismiss() }
             }
             ScrollView {
-                Text(output.isEmpty ? "Waiting for output…" : output)
+                Text(output.isEmpty ? (store.serviceExits[project.id] == nil ? "Waiting for output…" : "No output was captured.") : output)
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .topLeading)

@@ -5,5 +5,8 @@ let package = Package(
     name: "ProjectHub",
     platforms: [.macOS(.v14)],
     products: [.executable(name: "ProjectHub", targets: ["ProjectHub"])],
-    targets: [.executableTarget(name: "ProjectHub")]
+    targets: [
+        .executableTarget(name: "ProjectHub"),
+        .testTarget(name: "ProjectHubTests", dependencies: ["ProjectHub"])
+    ]
 )
