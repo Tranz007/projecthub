@@ -47,6 +47,9 @@ private struct ProjectCard: View {
                 ServerIndicator(project: project, size: 13)
                 if health.label != "-" { Text(health.label) }
                 Spacer()
+                if store.setting(for: project).hostingProvider != .none {
+                    HostedBadge(project: project)
+                }
                 if status.ready {
                     Button("Open site") { store.openURL(for: project) }.buttonStyle(.link)
                 }

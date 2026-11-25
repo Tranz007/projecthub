@@ -256,6 +256,7 @@ private enum TableColumns {
     static let tech: CGFloat = 120
     static let repository: CGFloat = 72
     static let webServer: CGFloat = 80
+    static let hosted: CGFloat = 76
     static let actions: CGFloat = 360
 }
 
@@ -267,8 +268,9 @@ private struct ProjectTable: View {
             HStack(spacing: 16) {
                 Text("PROJECT").frame(maxWidth: .infinity, alignment: .leading)
                 Text("TECH").frame(width: TableColumns.tech, alignment: .leading)
-                Text("GIT / REPO").frame(width: TableColumns.repository, alignment: .leading)
-                Text("WebServer").frame(width: TableColumns.webServer, alignment: .leading)
+                Text("GIT / REPO").frame(width: TableColumns.repository)
+                Text("WebServer").frame(width: TableColumns.webServer)
+                Text("EXTERNAL").frame(width: TableColumns.hosted)
                 Text("ACTIONS").frame(width: TableColumns.actions, alignment: .leading)
             }
                 .font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.horizontal, 18).padding(.vertical, 12)
@@ -300,9 +302,10 @@ private struct ProjectRow: View {
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
             TechStack(technologies: project.technologies).frame(width: TableColumns.tech, alignment: .leading)
-            RepoBadge(project: project).frame(width: TableColumns.repository, alignment: .leading)
+            RepoBadge(project: project).frame(width: TableColumns.repository)
             ServerIndicator(project: project)
-                .frame(width: TableColumns.webServer, alignment: .leading)
+                .frame(width: TableColumns.webServer)
+            HostedBadge(project: project).frame(width: TableColumns.hosted)
             HStack(spacing: 8) {
                 Button { store.openInAI(project) } label: { Label("Open with \(store.aiToolLabel)", systemImage: "terminal") }.buttonStyle(SecondaryButton())
                 Button { store.openInEditor(project) } label: { Image(systemName: "arrow.up.forward.app") }.buttonStyle(SecondaryButton()).help("Open in \(store.settings.preferredEditor)")
@@ -344,19 +347,36 @@ struct ConfigureProject: View {
     let project: Project
     @Binding var isPresented: Bool
     @State private var command: String = ""
-    @State private var port: Int = 3000
     @State private var favorite = false
+    @State private var hostingProvider: HostingProvider = .none
+    @State private var hostedURL = ""
+
+    private var validHostedURL: Bool {
+        guard hostingProvider != .none else { return true }
+        guard let url = URL(string: hostedURL.trimmingCharacters(in: .whitespacesAndNewlines)) else { return false }
+        return ["http", "https"].contains(url.scheme?.lowercased() ?? "") && url.host != nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Configure \(project.name)").font(.headline)
-            Text("Use {port} where the selected free port belongs. Project Hub will choose the next available port if needed.").font(.caption).foregroundStyle(.secondary)
+            Text("Project Hub chooses an available local port when starting the server. Use {port} in custom commands that accept a port.").font(.caption).foregroundStyle(.secondary)
             TextField("Command, e.g. npm run dev -- --port {port}", text: $command)
-            Stepper("Preferred port: \(port)", value: $port, in: 1024...65500)
+            Picker("External hosting", selection: $hostingProvider) {
+                ForEach(HostingProvider.allCases) { provider in Text(provider.rawValue).tag(provider) }
+            }
+            if hostingProvider != .none {
+                TextField("Site URL, e.g. https://example.vercel.app", text: $hostedURL)
+                    .textFieldStyle(.roundedBorder)
+                if !hostedURL.isEmpty && !validHostedURL {
+                    Text("Enter a full http or https URL.").font(.caption).foregroundStyle(.red)
+                }
+            }
             Toggle("Favorite", isOn: $favorite)
-            HStack { Spacer(); Button("Cancel") { isPresented = false }; Button("Save") { store.save(project: project, command: command, port: port, favorite: favorite); isPresented = false }.buttonStyle(.borderedProminent) }
+            HStack { Spacer(); Button("Cancel") { isPresented = false }; Button("Save") { store.save(project: project, command: command, favorite: favorite, hostingProvider: hostingProvider, hostedURL: hostedURL); isPresented = false }.buttonStyle(.borderedProminent).disabled(!validHostedURL) }
         }
         .padding(20).frame(width: 430)
-        .onAppear { let item = store.setting(for: project); command = item.command ?? project.defaultCommand ?? ""; port = item.preferredPort ?? project.defaultPort; favorite = item.favorite }
+        .onAppear { let item = store.setting(for: project); command = item.command ?? project.defaultCommand ?? ""; favorite = item.favorite; hostingProvider = item.hostingProvider; hostedURL = item.hostedURL ?? "" }
     }
 }
 

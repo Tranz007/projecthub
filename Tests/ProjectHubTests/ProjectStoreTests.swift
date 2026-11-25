@@ -24,10 +24,11 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertTrue(store.addProject(projectFolder))
         let project = try XCTUnwrap(store.projects.first)
         XCTAssertEqual(project.path.standardizedFileURL, projectFolder.standardizedFileURL)
+        XCTAssertEqual(store.port(for: project), project.defaultPort)
         let restored = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
         XCTAssertEqual(restored.projects.first?.id, project.id)
         XCTAssertEqual(store.serverHealth(for: project).label, "-")
-        store.save(project: project, command: "echo fixture failure; exit 7", port: 51000, favorite: false)
+        store.save(project: project, command: "echo fixture failure; exit 7", favorite: false, hostingProvider: .none, hostedURL: "")
         XCTAssertEqual(store.serverHealth(for: project).label, "Stopped")
         store.start(project)
 
@@ -40,7 +41,10 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertTrue(store.recentOutput[project.id]?.contains("fixture failure") == true)
         XCTAssertNil(store.running[project.id])
 
-        store.save(project: project, command: "sleep 30", port: 51000, favorite: false)
+        store.save(project: project, command: "sleep 30", favorite: false, hostingProvider: .vercel, hostedURL: "https://example.vercel.app")
+        let reloaded = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
+        XCTAssertEqual(reloaded.setting(for: project).hostingProvider, .vercel)
+        XCTAssertEqual(reloaded.setting(for: project).hostedURL, "https://example.vercel.app")
         store.start(project)
         XCTAssertNotNil(store.running[project.id])
         store.stopAll()
@@ -48,5 +52,13 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertNil(store.running[project.id])
         XCTAssertNil(store.serviceExits[project.id])
         XCTAssertEqual(store.serverHealth(for: project).label, "Stopped")
+    }
+
+    func testLegacyProjectSettingsIgnoreSavedPort() throws {
+        let old = Data(#"{"command":"npm run dev -- --port {port}","preferredPort":5500,"favorite":true}"#.utf8)
+        let setting = try JSONDecoder().decode(ProjectSettings.self, from: old)
+        XCTAssertTrue(setting.favorite)
+        XCTAssertEqual(setting.hostingProvider, .none)
+        XCTAssertNil(setting.hostedURL)
     }
 }

@@ -170,14 +170,13 @@ final class ProjectStore: ObservableObject {
 
     func command(for project: Project) -> String? { setting(for: project).command ?? project.defaultCommand }
 
-    func port(for project: Project) -> Int { setting(for: project).preferredPort ?? project.defaultPort }
+    func port(for project: Project) -> Int { project.defaultPort }
 
-    func status(for project: Project) -> (isRunning: Bool, port: Int?, managed: Bool, portBusy: Bool, ready: Bool) {
+    func status(for project: Project) -> (isRunning: Bool, port: Int?, managed: Bool, ready: Bool) {
         if let service = running[project.id], service.process.isRunning {
-            return (true, service.port, true, false, listeningPorts.contains(service.port))
+            return (true, service.port, true, listeningPorts.contains(service.port))
         }
-        let configuredPort = port(for: project)
-        return (false, configuredPort, false, listeningPorts.contains(configuredPort), false)
+        return (false, nil, false, false)
     }
 
     func serverHealth(for project: Project) -> ServerHealth {
@@ -193,14 +192,16 @@ final class ProjectStore: ObservableObject {
             return .starting(port)
         }
         guard command(for: project) != nil else { return .unavailable }
-        if current.portBusy, let port = current.port {
-            return .warning("Preferred port \(port) is in use. Project Hub will choose another port when started.")
-        }
         return .stopped
     }
 
-    func save(project: Project, command: String, port: Int, favorite: Bool) {
-        settings.projects[project.id] = ProjectSettings(command: command.nilIfEmpty, preferredPort: port, favorite: favorite)
+    func save(project: Project, command: String, favorite: Bool, hostingProvider: HostingProvider, hostedURL: String) {
+        settings.projects[project.id] = ProjectSettings(
+            command: command.nilIfEmpty,
+            favorite: favorite,
+            hostingProvider: hostingProvider,
+            hostedURL: hostingProvider == .none ? nil : hostedURL.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        )
         persistSettings()
     }
 

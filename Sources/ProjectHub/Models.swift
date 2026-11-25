@@ -51,8 +51,47 @@ extension Project {
 
 struct ProjectSettings: Codable, Hashable {
     var command: String?
-    var preferredPort: Int?
     var favorite = false
+    var hostingProvider: HostingProvider = .none
+    var hostedURL: String?
+
+    init(command: String? = nil, favorite: Bool = false, hostingProvider: HostingProvider = .none, hostedURL: String? = nil) {
+        self.command = command
+        self.favorite = favorite
+        self.hostingProvider = hostingProvider
+        self.hostedURL = hostedURL
+    }
+
+    private enum CodingKeys: String, CodingKey { case command, favorite, hostingProvider, hostedURL }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        command = try values.decodeIfPresent(String.self, forKey: .command)
+        favorite = try values.decodeIfPresent(Bool.self, forKey: .favorite) ?? false
+        hostingProvider = try values.decodeIfPresent(HostingProvider.self, forKey: .hostingProvider) ?? .none
+        hostedURL = try values.decodeIfPresent(String.self, forKey: .hostedURL)
+    }
+}
+
+enum HostingProvider: String, Codable, CaseIterable, Identifiable {
+    case none = "Not hosted"
+    case vercel = "Vercel"
+    case netlify = "Netlify"
+    case cloudflare = "Cloudflare Pages"
+    case firebase = "Firebase Hosting"
+    case other = "Other host"
+
+    var id: String { rawValue }
+
+    var iconName: String? {
+        switch self {
+        case .none, .other: nil
+        case .vercel: "vercel"
+        case .netlify: "netlify"
+        case .cloudflare: "cloudflare"
+        case .firebase: "firebase"
+        }
+    }
 }
 
 struct SavedSettings: Codable {

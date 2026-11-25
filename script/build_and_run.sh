@@ -16,6 +16,7 @@ cp Resources/Info.plist "$contents/Info.plist"
 cp Resources/AppIcon.icns "$contents/Resources/AppIcon.icns"
 cp -R Resources/TechIcons "$contents/Resources/TechIcons"
 cp -R Resources/RepoIcons "$contents/Resources/RepoIcons"
+cp -R Resources/HostIcons "$contents/Resources/HostIcons"
 codesign --force --sign - --timestamp=none "$bundle"
 
 echo "Built $bundle"
