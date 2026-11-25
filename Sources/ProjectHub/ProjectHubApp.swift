@@ -155,7 +155,7 @@ private struct Sidebar: View {
                 .buttonStyle(.plain).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 18)
-        .frame(width: 255)
+        .frame(width: 225)
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .background(Color.black.opacity(0.20))
     }
