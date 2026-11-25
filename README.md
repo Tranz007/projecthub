@@ -9,7 +9,7 @@ ProjectHub is a local macOS app for finding code projects, opening them in an ed
 - See technologies, Git branch and changes, and local server status.
 - Open a project in Cursor, Visual Studio Code, Zed, or a custom editor.
 - Launch Codex, Claude Code, Gemini CLI, or a custom command in a project-scoped Terminal session. Install those tools separately.
-- Start a standard Node `dev` script, or configure a project command and preferred port. ProjectHub selects a free port when starting a server.
+- Start or stop a development server from a list row or card. Open its local site and inspect the latest logs. A standard Node `dev` script is detected automatically; other projects can use a configured command and preferred port. ProjectHub selects a free port when starting a server.
 
 ## Build and run
 

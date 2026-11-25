@@ -7,6 +7,7 @@ import SwiftUI
 final class ProjectStore: ObservableObject {
     @Published private(set) var projects: [Project] = []
     @Published private(set) var running: [String: RunningService] = [:]
+    @Published private(set) var recentOutput: [String: String] = [:]
     @Published var search = ""
     @Published var selectedFilter: Filter = .all
     @Published var settings = SavedSettings()
@@ -132,10 +133,12 @@ final class ProjectStore: ObservableObject {
 
     func port(for project: Project) -> Int { setting(for: project).preferredPort ?? project.defaultPort }
 
-    func status(for project: Project) -> (isRunning: Bool, port: Int?, managed: Bool, portBusy: Bool) {
-        if let service = running[project.id], service.process.isRunning { return (true, service.port, true, false) }
+    func status(for project: Project) -> (isRunning: Bool, port: Int?, managed: Bool, portBusy: Bool, ready: Bool) {
+        if let service = running[project.id], service.process.isRunning {
+            return (true, service.port, true, false, listeningPorts.contains(service.port))
+        }
         let configuredPort = port(for: project)
-        return (false, configuredPort, false, listeningPorts.contains(configuredPort))
+        return (false, configuredPort, false, listeningPorts.contains(configuredPort), false)
     }
 
     func save(project: Project, command: String, port: Int, favorite: Bool) {
@@ -178,6 +181,7 @@ final class ProjectStore: ObservableObject {
         process.standardOutput = output
         process.standardError = output
         let id = project.id
+        recentOutput[id] = ""
         output.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
@@ -185,6 +189,7 @@ final class ProjectStore: ObservableObject {
                 guard var service = self?.running[id] else { return }
                 service.output = String((service.output + text).suffix(12_000))
                 self?.running[id] = service
+                self?.recentOutput[id] = service.output
             }
         }
         process.terminationHandler = { [weak self] _ in
@@ -247,7 +252,8 @@ final class ProjectStore: ObservableObject {
     }
     func openInFinder(_ project: Project) { NSWorkspace.shared.activateFileViewerSelecting([project.path]) }
     func openURL(for project: Project) {
-        guard let port = status(for: project).port else { return }
+        let current = status(for: project)
+        guard current.ready, let port = current.port else { return }
         NSWorkspace.shared.open(URL(string: "http://localhost:\(port)")!)
     }
     func openRepository(_ project: Project) { if let url = project.repositoryURL { NSWorkspace.shared.open(url) } }

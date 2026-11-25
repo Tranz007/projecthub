@@ -202,6 +202,7 @@ private struct ProjectRow: View {
     @EnvironmentObject private var store: ProjectStore
     let project: Project
     @State private var showingConfigure = false
+    @State private var showingLogs = false
     var body: some View {
         let status = store.status(for: project)
         HStack(spacing: 16) {
@@ -217,8 +218,15 @@ private struct ProjectRow: View {
             HStack(spacing: 7) { TechIcon(name: project.techIconName); Text(project.techSummary).lineLimit(2).foregroundStyle(.secondary).font(.caption) }.frame(width: 150, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) { HStack(spacing: 5) { Text(project.branch ?? "—"); if project.repositoryURL != nil { Button { store.openRepository(project) } label: { Image(systemName: "link") }.buttonStyle(.plain).foregroundStyle(.blue).help("Open GitHub repository") } }; if let changes = project.changedFiles { Text(changes == 0 ? "Clean" : "\(changes) changed").font(.caption).foregroundStyle(changes == 0 ? Color.secondary : Color.orange) } }.frame(width: 130, alignment: .leading)
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 7) { Circle().fill(status.isRunning ? .green : .gray).frame(width: 8, height: 8); Text(status.isRunning ? "Running" : status.portBusy ? "Port in use" : (store.command(for: project) == nil ? "No web server" : "Stopped")) }
-                if status.isRunning, let port = status.port { Button("localhost:\(port)") { store.openURL(for: project) }.buttonStyle(.link).font(.caption) }
+                HStack(spacing: 7) { Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 8, height: 8); Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : (store.command(for: project) == nil ? "No web server" : "Stopped")) }
+                if status.isRunning || store.recentOutput[project.id]?.isEmpty == false {
+                    HStack(spacing: 10) {
+                        if status.ready, let port = status.port {
+                        Button("localhost:\(port)") { store.openURL(for: project) }.buttonStyle(.link)
+                        }
+                        Button("Logs") { showingLogs = true }.buttonStyle(.link)
+                    }.font(.caption)
+                }
             }.frame(width: 180, alignment: .leading)
             HStack(spacing: 8) {
                 Button { store.openInAI(project) } label: { Label("Open with \(store.aiToolLabel)", systemImage: "terminal") }.buttonStyle(SecondaryButton())
@@ -229,6 +237,7 @@ private struct ProjectRow: View {
             }.frame(width: 370, alignment: .leading)
         }
         .padding(.horizontal, 18).padding(.vertical, 15)
+        .sheet(isPresented: $showingLogs) { ServiceLogsView(project: project) }
     }
 }
 

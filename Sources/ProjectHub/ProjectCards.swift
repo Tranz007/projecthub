@@ -21,6 +21,7 @@ private struct ProjectCard: View {
     @EnvironmentObject private var store: ProjectStore
     let project: Project
     @State private var showingConfigure = false
+    @State private var showingLogs = false
 
     var body: some View {
         let status = store.status(for: project)
@@ -45,25 +46,37 @@ private struct ProjectCard: View {
             Text(project.description ?? project.path.path(percentEncoded: false))
                 .font(.caption).foregroundStyle(.secondary).lineLimit(2)
             HStack {
-                Circle().fill(status.isRunning ? .green : .gray).frame(width: 7, height: 7)
-                Text(status.isRunning ? "Running" : status.portBusy ? "Port in use" : "Stopped")
+                Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 7, height: 7)
+                Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : "Stopped")
                 Spacer()
                 if let branch = project.branch { Text(branch).lineLimit(1) }
             }.font(.caption).foregroundStyle(.secondary)
+            if status.isRunning || store.recentOutput[project.id]?.isEmpty == false {
+                HStack {
+                    if status.ready, let port = status.port {
+                    Button("Open site · \(port)") { store.openURL(for: project) }.buttonStyle(.link)
+                    }
+                    Spacer()
+                    Button("Logs") { showingLogs = true }.buttonStyle(.link)
+                }
+                .font(.caption)
+            }
             HStack {
                 Button("Open with \(store.aiToolLabel)") { store.openInAI(project) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                 Spacer()
+                if status.managed {
+                    Button("Stop") { store.stop(project) }.buttonStyle(.borderedProminent)
+                } else if store.command(for: project) != nil {
+                    Button("Start") { store.start(project) }.buttonStyle(.borderedProminent)
+                } else {
+                    Button("Configure") { showingConfigure = true }.buttonStyle(.borderedProminent)
+                }
                 Menu {
                     Button("Open in \(store.settings.preferredEditor)") { store.openInEditor(project) }
                     Button("Open in Finder") { store.openInFinder(project) }
                     if project.repositoryURL != nil { Button("Open repository") { store.openRepository(project) } }
                     Button("Configure…") { showingConfigure = true }
-                    if status.managed {
-                        Button("Stop server") { store.stop(project) }
-                    } else if store.command(for: project) != nil {
-                        Button("Start server") { store.start(project) }
-                    }
                 } label: { Image(systemName: "ellipsis.circle") }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
@@ -77,5 +90,6 @@ private struct ProjectCard: View {
         .popover(isPresented: $showingConfigure) {
             ConfigureProject(project: project, isPresented: $showingConfigure)
         }
+        .sheet(isPresented: $showingLogs) { ServiceLogsView(project: project) }
     }
 }
