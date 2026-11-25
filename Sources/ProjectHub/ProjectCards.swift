@@ -32,7 +32,7 @@ private struct ProjectCard: View {
                     .frame(width: 34, height: 34)
                     .background(project.displayColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(project.name).font(.headline).lineLimit(1)
+                    Text(project.name).font(.system(size: 19, weight: .semibold)).lineLimit(1)
                     HStack(spacing: 6) {
                         TechIcon(name: project.techIconName)
                         Text(project.techSummary).font(.caption).foregroundStyle(.secondary)
@@ -66,11 +66,11 @@ private struct ProjectCard: View {
                     .buttonStyle(.bordered)
                 Spacer()
                 if status.managed {
-                    Button("Stop") { store.stop(project) }.buttonStyle(.borderedProminent)
+                    Button("Stop") { store.stop(project) }.buttonStyle(PrimaryButton(active: true))
                 } else if store.command(for: project) != nil {
-                    Button("Start") { store.start(project) }.buttonStyle(.borderedProminent)
+                    Button("Start") { store.start(project) }.buttonStyle(PrimaryButton(active: false))
                 } else {
-                    Button("Configure") { showingConfigure = true }.buttonStyle(.borderedProminent)
+                    Button("Configure") { showingConfigure = true }.buttonStyle(.bordered)
                 }
                 Menu {
                     Button("Open in \(store.settings.preferredEditor)") { store.openInEditor(project) }

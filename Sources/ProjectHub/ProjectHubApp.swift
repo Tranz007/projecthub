@@ -211,8 +211,16 @@ private struct ProjectRow: View {
                     .foregroundStyle(project.displayColor).font(.title3).frame(width: 30, height: 30)
                     .background(project.displayColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack { Text(project.name).fontWeight(.semibold); Button { store.toggleFavorite(project) } label: { Image(systemName: store.setting(for: project).favorite ? "star.fill" : "star").foregroundStyle(store.setting(for: project).favorite ? .yellow : .secondary) }.buttonStyle(.plain) }
-                    Text(project.description ?? project.path.path(percentEncoded: false)).lineLimit(1).font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Text(project.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                        Button { store.toggleFavorite(project) } label: {
+                            Image(systemName: store.setting(for: project).favorite ? "star.fill" : "star")
+                                .foregroundStyle(store.setting(for: project).favorite ? .yellow : .secondary)
+                        }.buttonStyle(.plain)
+                    }
+                    if let description = project.description, !description.isEmpty {
+                        Text(description).lineLimit(1).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 7) { TechIcon(name: project.techIconName); Text(project.techSummary).lineLimit(2).foregroundStyle(.secondary).font(.caption) }.frame(width: 150, alignment: .leading)
@@ -232,9 +240,19 @@ private struct ProjectRow: View {
                 Button { store.openInAI(project) } label: { Label("Open with \(store.aiToolLabel)", systemImage: "terminal") }.buttonStyle(SecondaryButton())
                 Button { store.openInEditor(project) } label: { Image(systemName: "arrow.up.forward.app") }.buttonStyle(SecondaryButton()).help("Open in \(store.settings.preferredEditor)")
                 Button { showingConfigure = true } label: { Image(systemName: "gearshape") }.buttonStyle(SecondaryButton())
-                Button { status.managed ? store.stop(project) : (store.command(for: project) == nil ? store.openInFinder(project) : store.start(project)) } label: { Label(status.managed ? "Stop" : (store.command(for: project) == nil ? "Open folder" : "Start"), systemImage: status.managed ? "stop.fill" : "play.fill") }
-                    .buttonStyle(PrimaryButton(active: status.managed)).popover(isPresented: $showingConfigure) { ConfigureProject(project: project, isPresented: $showingConfigure) }
-            }.frame(width: 370, alignment: .leading)
+                if status.managed {
+                    Button { store.stop(project) } label: { Label("Stop", systemImage: "stop.fill") }
+                        .buttonStyle(PrimaryButton(active: true))
+                } else if store.command(for: project) != nil {
+                    Button { store.start(project) } label: { Label("Start", systemImage: "play.fill") }
+                        .buttonStyle(PrimaryButton(active: false))
+                } else {
+                    Button { store.openInFinder(project) } label: { Label("Open Folder", systemImage: "folder") }
+                        .buttonStyle(SecondaryButton())
+                }
+            }
+            .frame(width: 370, alignment: .leading)
+            .popover(isPresented: $showingConfigure) { ConfigureProject(project: project, isPresented: $showingConfigure) }
         }
         .padding(.horizontal, 18).padding(.vertical, 15)
         .sheet(isPresented: $showingLogs) { ServiceLogsView(project: project) }
@@ -263,4 +281,4 @@ struct ConfigureProject: View {
 }
 
 private struct SecondaryButton: ButtonStyle { func makeBody(configuration: Configuration) -> some View { configuration.label.font(.caption.weight(.medium)).padding(.horizontal, 10).padding(.vertical, 9).background(.white.opacity(configuration.isPressed ? 0.15 : 0.07), in: RoundedRectangle(cornerRadius: 7)).overlay(RoundedRectangle(cornerRadius: 7).stroke(.white.opacity(0.12))) } }
-private struct PrimaryButton: ButtonStyle { let active: Bool; func makeBody(configuration: Configuration) -> some View { configuration.label.font(.caption.weight(.bold)).padding(.horizontal, 12).padding(.vertical, 9).foregroundStyle(active ? Color.white : Color.black).background(active ? Color.red.opacity(configuration.isPressed ? 0.75 : 0.9) : Color(red: 0.60, green: 0.94, blue: 0.37).opacity(configuration.isPressed ? 0.75 : 0.95), in: RoundedRectangle(cornerRadius: 7)) } }
+struct PrimaryButton: ButtonStyle { let active: Bool; func makeBody(configuration: Configuration) -> some View { configuration.label.font(.caption.weight(.bold)).padding(.horizontal, 12).padding(.vertical, 9).foregroundStyle(active ? Color.white : Color.black).background(active ? Color.red.opacity(configuration.isPressed ? 0.75 : 0.9) : Color(red: 0.60, green: 0.94, blue: 0.37).opacity(configuration.isPressed ? 0.75 : 0.95), in: RoundedRectangle(cornerRadius: 7)) } }
