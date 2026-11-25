@@ -28,17 +28,20 @@ final class ProjectStoreTests: XCTestCase {
         let restored = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
         XCTAssertEqual(restored.projects.first?.id, project.id)
         XCTAssertEqual(store.serverHealth(for: project).label, "-")
-        store.save(project: project, command: "echo fixture failure; exit 7", favorite: false, hostingProvider: .none, hostedURL: "")
+        store.save(project: project, command: "echo fixture failure; sleep 1; exit 7", favorite: false, hostingProvider: .none, hostedURL: "")
         XCTAssertEqual(store.serverHealth(for: project).label, "Stopped")
         store.start(project)
 
+        for _ in 0..<100 where store.recentOutput[project.id]?.contains("fixture failure") != true {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertTrue(store.recentOutput[project.id]?.contains("fixture failure") == true)
         for _ in 0..<100 where store.serviceExits[project.id] == nil {
             try await Task.sleep(for: .milliseconds(50))
         }
         XCTAssertEqual(store.serviceExits[project.id]?.code, 7)
         XCTAssertEqual(store.serverHealth(for: project).label, "Exited")
         XCTAssertEqual(store.alert?.title, "example server stopped")
-        XCTAssertTrue(store.recentOutput[project.id]?.contains("fixture failure") == true)
         XCTAssertNil(store.running[project.id])
 
         store.save(project: project, command: "sleep 30", favorite: false, hostingProvider: .vercel, hostedURL: "https://example.vercel.app")
