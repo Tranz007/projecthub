@@ -100,6 +100,7 @@ struct ContentView: View {
     var body: some View {
         HStack(spacing: 0) {
             Sidebar()
+                .zIndex(1)
             Divider().overlay(Color.white.opacity(0.08))
             VStack(spacing: 0) {
                 Header()
@@ -186,18 +187,11 @@ private struct Sidebar: View {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable().interpolation(.high).frame(width: 31, height: 31).clipShape(RoundedRectangle(cornerRadius: 8))
                     .padding(.leading, collapsed ? 3 : 6)
-                    .help("Project Hub")
+                    .accessibilityLabel("Project Hub")
+                    .modifier(SidebarTooltip(title: "Project Hub", enabled: collapsed))
                 if !collapsed {
                     Text("Project Hub").font(.system(size: 18, weight: .bold)).lineLimit(1)
                 }
-                Spacer(minLength: 0)
-                Button { collapsed.toggle() } label: {
-                    Image(systemName: collapsed ? "chevron.right" : "chevron.left")
-                        .font(.caption.weight(.semibold))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .help(collapsed ? "Expand sidebar" : "Collapse sidebar")
             }.padding(.top, 25)
             VStack(spacing: 5) {
                 NavRow(filter: .all, icon: "rectangle.stack", collapsed: collapsed)
@@ -210,12 +204,16 @@ private struct Sidebar: View {
                     if collapsed { Image(systemName: "arrow.clockwise") }
                     else { Label("Refresh projects", systemImage: "arrow.clockwise") }
                 }
-                .buttonStyle(.plain).help("Refresh projects").accessibilityLabel("Refresh projects")
+                .buttonStyle(.plain)
+                .accessibilityLabel("Refresh projects")
+                .modifier(SidebarTooltip(title: "Refresh projects", enabled: collapsed))
                 SettingsLink {
                     if collapsed { Image(systemName: "gearshape") }
                     else { Label("Settings", systemImage: "gearshape") }
                 }
-                .buttonStyle(.plain).help("Settings").accessibilityLabel("Settings")
+                .buttonStyle(.plain)
+                .accessibilityLabel("Settings")
+                .modifier(SidebarTooltip(title: "Settings", enabled: collapsed))
             }
             .foregroundStyle(.secondary)
             .padding(.leading, collapsed ? 12 : 15)
@@ -223,6 +221,18 @@ private struct Sidebar: View {
                 Text("A calmer desk builds a sharper you.").font(.caption).italic().foregroundStyle(.tertiary)
             }
             Spacer(minLength: 0)
+            Button { collapsed.toggle() } label: {
+                Image(systemName: collapsed ? "chevron.right" : "chevron.left")
+                    .font(.caption.weight(.semibold))
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(collapsed ? "Maximize sidebar" : "Minimize sidebar")
+            .modifier(SidebarTooltip(title: collapsed ? "Maximize sidebar" : "Minimize sidebar", enabled: true))
+            .padding(.leading, collapsed ? 8 : 12)
+            .padding(.bottom, 18)
         }
         .padding(.horizontal, collapsed ? 10 : 18)
         .frame(width: collapsed ? 76 : 225)
@@ -249,8 +259,33 @@ private struct NavRow: View {
                 .padding(.horizontal, collapsed ? 8 : 12).padding(.vertical, 9).background(store.selectedFilter == filter ? Color.white.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
-        .help("\(filter.rawValue) · \(count)")
         .accessibilityLabel("\(filter.rawValue), \(count)")
+        .modifier(SidebarTooltip(title: "\(filter.rawValue) · \(count)", enabled: collapsed))
+    }
+}
+
+private struct SidebarTooltip: ViewModifier {
+    let title: String
+    let enabled: Bool
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { hovering = $0 }
+            .overlay(alignment: .leading) {
+                if enabled && hovering {
+                    Text(title)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color(red: 0.16, green: 0.18, blue: 0.20), in: RoundedRectangle(cornerRadius: 7))
+                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(.white.opacity(0.18)))
+                        .fixedSize()
+                        .offset(x: 48)
+                        .allowsHitTesting(false)
+                }
+            }
     }
 }
 
