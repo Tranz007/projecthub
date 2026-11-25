@@ -94,36 +94,35 @@ private enum ProjectHubWindowLayout {
 
 struct ContentView: View {
     @EnvironmentObject private var store: ProjectStore
+    @AppStorage("sidebarCollapsed") private var sidebarCollapsed = false
     @AppStorage("projectLayout") private var projectLayout = "List"
     @AppStorage("cardColumns") private var cardColumns = "Auto"
 
     var body: some View {
+        GeometryReader { window in
         HStack(spacing: 0) {
             Sidebar()
                 .zIndex(1)
             Divider().overlay(Color.white.opacity(0.08))
             VStack(spacing: 0) {
-                Header()
-                Divider().overlay(Color.white.opacity(0.08))
                 GeometryReader { geometry in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
-                        HStack(alignment: .firstTextBaseline) {
+                        HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(store.selectedFilter.rawValue).font(.system(size: 32, weight: .bold))
                                 Text("\(store.visibleProjects.count) projects  •  \(store.projects.filter { store.status(for: $0).isRunning }.count) running")
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Picker("Filter", selection: $store.selectedFilter) {
-                                ForEach(ProjectStore.Filter.allCases) { Text($0.rawValue).tag($0) }
-                            }.pickerStyle(.segmented).frame(width: 310)
+                            SearchLine()
+                                .frame(width: 320)
+                                .padding(.top, 8)
                         }
                         HStack {
-                            Picker("View", selection: $projectLayout) {
-                                Text("List").tag("List")
-                                Text("Cards").tag("Cards")
-                            }.pickerStyle(.segmented).frame(width: 175)
+                            Text("View").foregroundStyle(.secondary)
+                            ViewModeButton(mode: "List", symbol: "list.bullet", selection: $projectLayout)
+                            ViewModeButton(mode: "Cards", symbol: "square.grid.2x2", selection: $projectLayout)
                             if projectLayout == "Cards" {
                                 Picker("Columns", selection: $cardColumns) {
                                     ForEach(["Auto", "2", "3", "4"], id: \.self) { Text($0).tag($0) }
@@ -134,8 +133,12 @@ struct ContentView: View {
                                 Button("Add Project…") { chooseProject() }
                                 Button("Choose Folder…") { chooseFolder() }
                             } label: {
-                                Label("Add", systemImage: "plus")
+                                HStack(spacing: 6) {
+                                    Image(systemName: "plus.circle.fill").font(.system(size: 20))
+                                    Text("Add")
+                                }
                             }
+                            .menuStyle(.borderlessButton)
                             .fixedSize()
                         }
                         if store.projects.isEmpty && store.isScanning {
@@ -155,12 +158,16 @@ struct ContentView: View {
                                 ProjectTable(projects: store.visibleProjects)
                                     .frame(minWidth: max(1050, geometry.size.width - 60))
                             }
+                            .id(sidebarCollapsed)
                         }
                         }
                         .padding(30)
                     }
                 }
             }
+            .frame(width: window.size.width - (sidebarCollapsed ? 76 : 225) - 1)
+            .id(sidebarCollapsed)
+        }
         }
         .background(Color(red: 0.055, green: 0.068, blue: 0.078))
     }
@@ -185,8 +192,8 @@ private struct Sidebar: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 8) {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
-                    .resizable().interpolation(.high).frame(width: 31, height: 31).clipShape(RoundedRectangle(cornerRadius: 8))
-                    .padding(.leading, collapsed ? 3 : 6)
+                    .resizable().interpolation(.high).frame(width: 35, height: 35).clipShape(RoundedRectangle(cornerRadius: 8))
+                    .padding(.leading, collapsed ? 1 : 4)
                     .accessibilityLabel("Project Hub")
                     .modifier(SidebarTooltip(title: "Project Hub", enabled: collapsed))
                 if !collapsed {
@@ -201,36 +208,37 @@ private struct Sidebar: View {
             Divider().overlay(Color.white.opacity(0.1))
             VStack(alignment: .leading, spacing: 14) {
                 Button { store.refreshProjects() } label: {
-                    if collapsed { Image(systemName: "arrow.clockwise") }
-                    else { Label("Refresh projects", systemImage: "arrow.clockwise") }
+                    SidebarActionLabel(symbol: "arrow.clockwise", title: "Refresh projects", collapsed: collapsed)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Refresh projects")
                 .modifier(SidebarTooltip(title: "Refresh projects", enabled: collapsed))
                 SettingsLink {
-                    if collapsed { Image(systemName: "gearshape") }
-                    else { Label("Settings", systemImage: "gearshape") }
+                    SidebarActionLabel(symbol: "gearshape", title: "Settings", collapsed: collapsed)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Settings")
                 .modifier(SidebarTooltip(title: "Settings", enabled: collapsed))
             }
             .foregroundStyle(.secondary)
-            .padding(.leading, collapsed ? 12 : 15)
+            .padding(.leading, collapsed ? 8 : 12)
             if !collapsed {
                 Text("A calmer desk builds a sharper you.").font(.caption).italic().foregroundStyle(.tertiary)
             }
             Spacer(minLength: 0)
             Button { collapsed.toggle() } label: {
-                Image(systemName: collapsed ? "chevron.right" : "chevron.left")
-                    .font(.caption.weight(.semibold))
-                    .frame(width: 20, height: 20)
-                    .contentShape(Rectangle())
+                HStack(spacing: 8) {
+                    Image(systemName: collapsed ? "chevron.right" : "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 20, height: 20)
+                    if !collapsed { Text("Minimize sidebar") }
+                }
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .accessibilityLabel(collapsed ? "Maximize sidebar" : "Minimize sidebar")
-            .modifier(SidebarTooltip(title: collapsed ? "Maximize sidebar" : "Minimize sidebar", enabled: true))
+            .modifier(SidebarTooltip(title: "Maximize sidebar", enabled: collapsed))
             .padding(.leading, collapsed ? 8 : 12)
             .padding(.bottom, 18)
         }
@@ -248,7 +256,7 @@ private struct NavRow: View {
     var body: some View {
         Button { store.selectedFilter = filter } label: {
             HStack(spacing: 6) {
-                Image(systemName: icon).frame(width: 20)
+                Image(systemName: icon).font(.system(size: 17, weight: .medium)).frame(width: 20)
                 if !collapsed {
                     Text(filter.rawValue)
                     Spacer(minLength: 0)
@@ -261,6 +269,21 @@ private struct NavRow: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(filter.rawValue), \(count)")
         .modifier(SidebarTooltip(title: "\(filter.rawValue) · \(count)", enabled: collapsed))
+    }
+}
+
+private struct SidebarActionLabel: View {
+    let symbol: String
+    let title: String
+    let collapsed: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .medium))
+                .frame(width: 20)
+            if !collapsed { Text(title) }
+        }
     }
 }
 
@@ -289,14 +312,51 @@ private struct SidebarTooltip: ViewModifier {
     }
 }
 
-private struct Header: View {
+private struct SearchLine: View {
     @EnvironmentObject private var store: ProjectStore
+
     var body: some View {
-        HStack {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Search projects, technologies, or tags…", text: $store.search).textFieldStyle(.plain)
-            Text("⌘ K").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 7).padding(.vertical, 4).background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 5))
-        }.padding(.horizontal, 16).padding(.vertical, 13).background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 9)).padding(18)
+        VStack(spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search projects…", text: $store.search)
+                    .textFieldStyle(.plain)
+                    .accessibilityLabel("Search projects, technologies, or tags")
+            }
+            Rectangle().fill(.white.opacity(0.25)).frame(height: 1)
+        }
+    }
+}
+
+private struct ViewModeButton: View {
+    let mode: String
+    let symbol: String
+    @Binding var selection: String
+    @State private var hovering = false
+
+    var body: some View {
+        Button { selection = mode } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .medium))
+                .frame(width: 32, height: 28)
+                .background(selection == mode ? Color.white.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(mode) view")
+        .onHover { hovering = $0 }
+        .overlay(alignment: .top) {
+            if hovering {
+                Text("\(mode) view")
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(Color(red: 0.16, green: 0.18, blue: 0.20), in: RoundedRectangle(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(.white.opacity(0.18)))
+                    .fixedSize()
+                    .offset(y: 33)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 }
 
@@ -321,11 +381,9 @@ private struct ProjectTable: View {
                 Text("EXTERNAL").frame(width: TableColumns.hosted)
                 Text("ACTIONS").frame(width: TableColumns.actions, alignment: .leading)
             }
-                .font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.horizontal, 18).padding(.vertical, 12)
-            ForEach(projects) { project in ProjectRow(project: project); Divider().overlay(Color.white.opacity(0.08)).padding(.horizontal, 18) }
+                .font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.vertical, 12)
+            ForEach(projects) { project in ProjectRow(project: project); Divider().overlay(Color.white.opacity(0.08)) }
         }
-        .background(.black.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.09)))
     }
 }
 
@@ -385,7 +443,7 @@ private struct ProjectRow: View {
             .frame(width: TableColumns.actions, alignment: .leading)
             .popover(isPresented: $showingConfigure) { ConfigureProject(project: project, isPresented: $showingConfigure) }
         }
-        .padding(.horizontal, 18).padding(.vertical, 15)
+        .padding(.vertical, 15)
         .sheet(isPresented: $showingLogs) { ServiceLogsView(project: project) }
     }
 }
