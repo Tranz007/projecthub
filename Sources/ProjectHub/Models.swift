@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-struct Project: Identifiable, Hashable, Sendable {
+struct Project: Codable, Identifiable, Hashable, Sendable {
     let id: String
     let name: String
     let path: URL

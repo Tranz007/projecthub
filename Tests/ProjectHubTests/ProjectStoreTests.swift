@@ -29,11 +29,9 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(project.path.standardizedFileURL, projectFolder.standardizedFileURL)
         XCTAssertEqual(store.port(for: project), project.defaultPort)
         let restored = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
-        restored.refreshProjects()
-        for _ in 0..<100 where restored.projects.isEmpty {
-            try await Task.sleep(for: .milliseconds(50))
-        }
         XCTAssertEqual(restored.projects.first?.id, project.id)
+        let changedSource = ProjectStore(settingsURL: settingsURL, scanFolders: [root.path()], preferences: preferences)
+        XCTAssertTrue(changedSource.projects.isEmpty)
         XCTAssertEqual(store.serverHealth(for: project).label, "-")
         store.save(project: project, command: "echo fixture failure; sleep 1; exit 7", favorite: false, hostingProvider: .none, hostedURL: "")
         XCTAssertEqual(store.serverHealth(for: project).label, "Stopped")

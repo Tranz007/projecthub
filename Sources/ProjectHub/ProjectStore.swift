@@ -14,6 +14,7 @@ final class ProjectStore: ObservableObject {
     @Published var selectedFilter: Filter = .all
     @Published var settings = SavedSettings()
     @Published var alert: AppAlert?
+    @Published private(set) var isScanning = false
     @Published private var listeningPorts = Set<Int>()
 
     enum Filter: String, CaseIterable, Identifiable {
@@ -45,17 +46,22 @@ final class ProjectStore: ObservableObject {
 
     private var refreshTimer: Timer?
     private var scanGeneration = 0
+    private var lastScanRequestedAt: Date?
     private let settingsURL: URL
+    private let cacheURL: URL
     private let preferences: UserDefaults
 
     init(settingsURL: URL? = nil, scanFolders: [String]? = nil, preferences: UserDefaults = .standard) {
         self.settingsURL = settingsURL ?? FileManager.default.homeDirectoryForCurrentUser
             .appending(path: "Library/Application Support/ProjectHub/settings.json")
+        self.cacheURL = self.settingsURL.deletingLastPathComponent().appending(path: "projects-cache.json")
         self.preferences = preferences
         needsWelcome = !FileManager.default.fileExists(atPath: self.settingsURL.path())
             && !preferences.bool(forKey: "welcomeCompleted")
         loadSettings()
         if let scanFolders { settings.scanFolders = scanFolders }
+        loadCachedProjects()
+        isScanning = projects.isEmpty && (!settings.scanFolders.isEmpty || !settings.projectFolders.isEmpty)
         refreshPortSnapshot()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in Task { @MainActor in self?.refreshPortSnapshot() } }
     }
@@ -76,6 +82,8 @@ final class ProjectStore: ObservableObject {
     }
 
     func refreshProjects() {
+        lastScanRequestedAt = .now
+        isScanning = true
         scanGeneration += 1
         let generation = scanGeneration
         let scanFolders = settings.scanFolders
@@ -86,12 +94,42 @@ final class ProjectStore: ObservableObject {
         }
     }
 
+    func refreshProjectsIfStale() {
+        guard lastScanRequestedAt.map({ Date().timeIntervalSince($0) >= 60 }) ?? true else { return }
+        refreshProjects()
+    }
+
     private func applyScan(_ result: (projects: [Project], inaccessible: [String]), generation: Int) {
         guard scanGeneration == generation else { return }
-        projects = result.projects
+        isScanning = false
+        if result.inaccessible.isEmpty || projects.isEmpty {
+            projects = result.projects
+        }
+        if result.inaccessible.isEmpty { persistCachedProjects() }
         if !result.inaccessible.isEmpty {
             alert = AppAlert(title: "Cannot read project folders", message: "Check access to: \(result.inaccessible.joined(separator: ", "))")
         }
+    }
+
+    private struct ProjectCache: Codable {
+        let scanFolders: [String]
+        let projectFolders: [String]
+        let projects: [Project]
+    }
+
+    private func loadCachedProjects() {
+        guard let data = try? Data(contentsOf: cacheURL),
+              let cache = try? JSONDecoder().decode(ProjectCache.self, from: data),
+              cache.scanFolders == settings.scanFolders,
+              cache.projectFolders == settings.projectFolders else { return }
+        projects = cache.projects
+    }
+
+    private func persistCachedProjects() {
+        let cache = ProjectCache(scanFolders: settings.scanFolders, projectFolders: settings.projectFolders, projects: projects)
+        guard let data = try? JSONEncoder().encode(cache) else { return }
+        try? FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: cacheURL, options: .atomic)
     }
 
     nonisolated private static func scanProjects(scanFolders: [String], projectFolders: [String]) -> (projects: [Project], inaccessible: [String]) {

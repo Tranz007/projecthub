@@ -28,10 +28,10 @@ struct ProjectHubApp: App {
                 .preferredColorScheme(.dark)
                 .onAppear {
                     appDelegate.store = store
-                    DispatchQueue.main.async { store.refreshProjects() }
+                    DispatchQueue.main.async { store.refreshProjectsIfStale() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                    store.refreshProjects()
+                    store.refreshProjectsIfStale()
                 }
                 .alert(item: $store.alert) { alert in
                     if let action = alert.action {
@@ -137,7 +137,10 @@ struct ContentView: View {
                             }
                             .fixedSize()
                         }
-                        if store.projects.isEmpty {
+                        if store.projects.isEmpty && store.isScanning {
+                            ProgressView("Scanning project folders…")
+                                .padding(.vertical, 30)
+                        } else if store.projects.isEmpty {
                             ProjectSourceView(welcome: false)
                                 .environmentObject(store)
                         } else if store.visibleProjects.isEmpty {

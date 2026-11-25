@@ -5,6 +5,7 @@ ProjectHub is a local macOS app for finding code projects, opening them in an ed
 ## Features
 
 - Choose folders to scan or add an individual project with `.git`, `package.json`, or `pyproject.toml`.
+- See the last known project list immediately on launch while ProjectHub refreshes it in the background. Use **Refresh projects** to scan immediately.
 - Browse in a list or cards, with automatic or selected card columns and a collapsible sidebar.
 - See technology logos, local server status, and an optional external hosting provider. Hover over a logo for its name, a project name for its description, or a repository or hosting icon for details. Click a repository or hosting icon to open its URL.
 - Open a project in Cursor, Visual Studio Code, Zed, or a custom editor.
@@ -25,7 +26,7 @@ The script builds an ad hoc signed app at `dist/Project Hub.app` and opens it lo
 
 On first launch, choose a scan folder, add one project, or continue with the default `~/Desktop` scan. ProjectHub scans only the immediate subfolders of each scan folder. Use **Add** in the main window or **Settings** / **⌘,** to manage sources. Settings also selects an editor and AI tool. Each project's **Configure** control stores its command, external hosting provider and site URL, and favorite state. External hosting details are set by the user; ProjectHub does not query deployment status.
 
-Settings are stored locally at `~/Library/Application Support/ProjectHub/settings.json`. ProjectHub does not require an account or send project data to a server. Configured project and AI commands run locally with your user permissions; review commands before saving them.
+Settings and the last scanned project list are stored locally at `~/Library/Application Support/ProjectHub/settings.json` and `projects-cache.json`. ProjectHub does not require an account or send project data to a server. Configured project and AI commands run locally with your user permissions; review commands before saving them.
 
 ## Contributing
 
