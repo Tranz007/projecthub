@@ -25,7 +25,7 @@ private struct ProjectCard: View {
 
     var body: some View {
         let status = store.status(for: project)
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: project.displaySymbol)
                     .foregroundStyle(project.displayColor)
