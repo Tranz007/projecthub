@@ -4,6 +4,27 @@ import XCTest
 
 @MainActor
 final class ProjectStoreTests: XCTestCase {
+    func testIPv6LocalServerIsDetectedAsRunning() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ProjectHubIPv6-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let store = ProjectStore(settingsURL: root.appending(path: "settings.json"), scanFolders: [])
+        let project = Project(
+            id: root.path(), name: "IPv6 fixture", path: root, kind: .python,
+            techSummary: "Python", repositoryURL: nil, branch: nil, changedFiles: nil,
+            description: nil, defaultCommand: nil, defaultPort: 48700
+        )
+        store.save(project: project, command: "/usr/bin/python3 -m http.server {port} --bind ::1", favorite: false, hostingProvider: .none, hostedURL: "")
+        store.start(project)
+        defer { store.stopAll() }
+
+        for _ in 0..<200 where !store.status(for: project).ready {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertEqual(store.serverHealth(for: project).label, "Running")
+    }
+
     func testDirectProjectAndUnexpectedServerExit() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "ProjectHubTests-\(UUID().uuidString)")
         let suiteName = "ProjectHubTests-\(UUID().uuidString)"

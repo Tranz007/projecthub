@@ -409,12 +409,13 @@ final class ProjectStore: ObservableObject {
     }
 
     private func refreshPortSnapshot() {
+        let managedPorts = Set(running.values.map(\.port))
+        guard !managedPorts.isEmpty else {
+            listeningPorts = []
+            return
+        }
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            let output = Self.run("/usr/sbin/lsof", ["-nP", "-iTCP", "-sTCP:LISTEN"])
-            let ports = Set(output.split(separator: "\n").compactMap { line -> Int? in
-                guard let range = line.range(of: #":\d+"#, options: .regularExpression) else { return nil }
-                return Int(line[range].dropFirst())
-            })
+            let ports = Set(managedPorts.filter { Self.portIsBusy($0) })
             Task { @MainActor in self?.listeningPorts = ports }
         }
     }
@@ -468,7 +469,7 @@ final class ProjectStore: ObservableObject {
             .split(separator: "\n").compactMap { Int32($0) }
         return children + children.flatMap { descendants(of: $0) }
     }
-    private static func portIsBusy(_ port: Int) -> Bool {
+    nonisolated private static func portIsBusy(_ port: Int) -> Bool {
         let output = run("/usr/sbin/lsof", ["-nP", "-iTCP:\(port)", "-sTCP:LISTEN"])
         return output.split(separator: "\n").count > 1
     }

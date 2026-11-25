@@ -193,20 +193,22 @@ private struct Sidebar: View {
             HStack(spacing: 8) {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable().interpolation(.high).frame(width: 35, height: 35).clipShape(RoundedRectangle(cornerRadius: 8))
-                    .padding(.leading, collapsed ? 1 : 4)
+                    .padding(.leading, collapsed ? 0 : 4)
                     .accessibilityLabel("Project Hub")
                     .modifier(SidebarTooltip(title: "Project Hub", enabled: collapsed))
                 if !collapsed {
                     Text("Project Hub").font(.system(size: 18, weight: .bold)).lineLimit(1)
                 }
-            }.padding(.top, 25)
+            }
+            .frame(maxWidth: .infinity, alignment: collapsed ? .center : .leading)
+            .padding(.top, 25)
             VStack(spacing: 5) {
                 NavRow(filter: .all, icon: "rectangle.stack", collapsed: collapsed)
                 NavRow(filter: .favorites, icon: "heart", collapsed: collapsed)
                 NavRow(filter: .running, icon: "play.circle", collapsed: collapsed)
             }
             Divider().overlay(Color.white.opacity(0.1))
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: collapsed ? .center : .leading, spacing: 14) {
                 Button { store.refreshProjects() } label: {
                     SidebarActionLabel(symbol: "arrow.clockwise", title: "Refresh projects", collapsed: collapsed)
                 }
@@ -221,7 +223,8 @@ private struct Sidebar: View {
                 .modifier(SidebarTooltip(title: "Settings", enabled: collapsed))
             }
             .foregroundStyle(.secondary)
-            .padding(.leading, collapsed ? 8 : 12)
+            .padding(.leading, collapsed ? 0 : 12)
+            .frame(maxWidth: .infinity, alignment: collapsed ? .center : .leading)
             if !collapsed {
                 Text("A calmer desk builds a sharper you.").font(.caption).italic().foregroundStyle(.tertiary)
             }
@@ -239,7 +242,8 @@ private struct Sidebar: View {
             .foregroundStyle(.secondary)
             .accessibilityLabel(collapsed ? "Maximize sidebar" : "Minimize sidebar")
             .modifier(SidebarTooltip(title: "Maximize sidebar", enabled: collapsed))
-            .padding(.leading, collapsed ? 8 : 12)
+            .padding(.leading, collapsed ? 0 : 12)
+            .frame(maxWidth: .infinity, alignment: collapsed ? .center : .leading)
             .padding(.bottom, 18)
         }
         .padding(.horizontal, collapsed ? 10 : 18)
@@ -265,6 +269,7 @@ private struct NavRow: View {
                 }
             }
                 .padding(.horizontal, collapsed ? 8 : 12).padding(.vertical, 9).background(store.selectedFilter == filter ? Color.white.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 8))
+                .frame(maxWidth: .infinity, alignment: collapsed ? .center : .leading)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(filter.rawValue), \(count)")
