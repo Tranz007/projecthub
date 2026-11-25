@@ -45,11 +45,14 @@ final class ProjectStore: ObservableObject {
 
     private var refreshTimer: Timer?
     private let settingsURL: URL
+    private let preferences: UserDefaults
 
-    init(settingsURL: URL? = nil, scanFolders: [String]? = nil) {
+    init(settingsURL: URL? = nil, scanFolders: [String]? = nil, preferences: UserDefaults = .standard) {
         self.settingsURL = settingsURL ?? FileManager.default.homeDirectoryForCurrentUser
             .appending(path: "Library/Application Support/ProjectHub/settings.json")
+        self.preferences = preferences
         needsWelcome = !FileManager.default.fileExists(atPath: self.settingsURL.path())
+            && !preferences.bool(forKey: "welcomeCompleted")
         loadSettings()
         if let scanFolders { settings.scanFolders = scanFolders }
         refreshProjects()
@@ -153,6 +156,7 @@ final class ProjectStore: ObservableObject {
 
     func completeWelcome() {
         needsWelcome = false
+        preferences.set(true, forKey: "welcomeCompleted")
         persistSettings()
     }
 

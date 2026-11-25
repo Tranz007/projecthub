@@ -6,20 +6,25 @@ import XCTest
 final class ProjectStoreTests: XCTestCase {
     func testDirectProjectAndUnexpectedServerExit() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "ProjectHubTests-\(UUID().uuidString)")
+        let suiteName = "ProjectHubTests-\(UUID().uuidString)"
+        let preferences = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         let projectFolder = root.appending(path: "nested/example")
         try FileManager.default.createDirectory(at: projectFolder, withIntermediateDirectories: true)
         try Data("{}".utf8).write(to: projectFolder.appending(path: "package.json"))
         defer { try? FileManager.default.removeItem(at: root) }
+        defer { preferences.removePersistentDomain(forName: suiteName) }
 
-        let store = ProjectStore(settingsURL: root.appending(path: "settings.json"), scanFolders: [])
+        let settingsURL = root.appending(path: "settings.json")
+        let store = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
         XCTAssertTrue(store.needsWelcome)
         store.completeWelcome()
         XCTAssertFalse(store.needsWelcome)
-        XCTAssertFalse(ProjectStore(settingsURL: root.appending(path: "settings.json"), scanFolders: []).needsWelcome)
+        try FileManager.default.removeItem(at: settingsURL)
+        XCTAssertFalse(ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences).needsWelcome)
         XCTAssertTrue(store.addProject(projectFolder))
         let project = try XCTUnwrap(store.projects.first)
         XCTAssertEqual(project.path.standardizedFileURL, projectFolder.standardizedFileURL)
-        let restored = ProjectStore(settingsURL: root.appending(path: "settings.json"), scanFolders: [])
+        let restored = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
         XCTAssertEqual(restored.projects.first?.id, project.id)
         store.save(project: project, command: "echo fixture failure; exit 7", port: 51000, favorite: false)
         store.start(project)

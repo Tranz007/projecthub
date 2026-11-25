@@ -44,14 +44,8 @@ struct RepoBadge: View {
 
     var body: some View {
         if project.changedFiles != nil {
-            Button { showingDetails = true } label: {
-                RepoIcon(name: project.repositoryURL == nil ? "git" : "github")
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            indicator
             .help(detail)
-            .accessibilityLabel(project.repositoryURL == nil ? "Git details" : "GitHub repository details")
             .onHover { showingDetails = $0 }
             .popover(isPresented: $showingDetails, arrowEdge: .bottom) {
                 VStack(alignment: .leading, spacing: 10) {
@@ -59,7 +53,10 @@ struct RepoBadge: View {
                     Label(project.branch ?? "No branch", systemImage: "arrow.triangle.branch")
                     Text(changeSummary)
                     if let url = project.repositoryURL {
-                        Link("Open on GitHub", destination: url)
+                        Text(url.absoluteString)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
                     } else {
                         Text("No GitHub remote").foregroundStyle(.secondary)
                     }
@@ -69,6 +66,23 @@ struct RepoBadge: View {
             }
         } else {
             Text("—").foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder private var indicator: some View {
+        if let url = project.repositoryURL {
+            Link(destination: url) {
+                RepoIcon(name: "github")
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open \(project.name) on GitHub")
+        } else {
+            RepoIcon(name: "git")
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Local Git repository. \(detail)")
         }
     }
 }
