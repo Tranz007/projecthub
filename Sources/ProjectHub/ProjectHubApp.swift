@@ -378,6 +378,9 @@ private struct ProjectTable: View {
     let projects: [Project]
     var body: some View {
         VStack(spacing: 0) {
+            Rectangle()
+                .fill(.white.opacity(0.14))
+                .frame(height: 1)
             HStack(spacing: 16) {
                 Text("PROJECT").frame(maxWidth: .infinity, alignment: .leading)
                 Text("TECH").frame(width: TableColumns.tech, alignment: .leading)
