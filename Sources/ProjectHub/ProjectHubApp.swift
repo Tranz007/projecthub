@@ -186,6 +186,7 @@ private struct Sidebar: View {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable().interpolation(.high).frame(width: 31, height: 31).clipShape(RoundedRectangle(cornerRadius: 8))
                     .padding(.leading, collapsed ? 3 : 6)
+                    .help("Project Hub")
                 if !collapsed {
                     Text("Project Hub").font(.system(size: 18, weight: .bold)).lineLimit(1)
                 }
@@ -209,12 +210,12 @@ private struct Sidebar: View {
                     if collapsed { Image(systemName: "arrow.clockwise") }
                     else { Label("Refresh projects", systemImage: "arrow.clockwise") }
                 }
-                .buttonStyle(.plain).help("Refresh projects")
+                .buttonStyle(.plain).help("Refresh projects").accessibilityLabel("Refresh projects")
                 SettingsLink {
                     if collapsed { Image(systemName: "gearshape") }
                     else { Label("Settings", systemImage: "gearshape") }
                 }
-                .buttonStyle(.plain).help("Settings")
+                .buttonStyle(.plain).help("Settings").accessibilityLabel("Settings")
             }
             .foregroundStyle(.secondary)
             .padding(.leading, collapsed ? 12 : 15)
@@ -224,7 +225,7 @@ private struct Sidebar: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, collapsed ? 10 : 18)
-        .frame(width: collapsed ? 96 : 225)
+        .frame(width: collapsed ? 76 : 225)
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .background(Color.black.opacity(0.20))
     }
@@ -238,12 +239,18 @@ private struct NavRow: View {
         Button { store.selectedFilter = filter } label: {
             HStack(spacing: 6) {
                 Image(systemName: icon).frame(width: 20)
-                if !collapsed { Text(filter.rawValue); Spacer(minLength: 0) }
-                Text("\(count)").font(.caption).padding(.horizontal, collapsed ? 5 : 7).padding(.vertical, 3)
-                    .background(.white.opacity(0.09), in: Capsule())
+                if !collapsed {
+                    Text(filter.rawValue)
+                    Spacer(minLength: 0)
+                    Text("\(count)").font(.caption).padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(.white.opacity(0.09), in: Capsule())
+                }
             }
                 .padding(.horizontal, collapsed ? 8 : 12).padding(.vertical, 9).background(store.selectedFilter == filter ? Color.white.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 8))
-        }.buttonStyle(.plain).help(filter.rawValue)
+        }
+        .buttonStyle(.plain)
+        .help("\(filter.rawValue) · \(count)")
+        .accessibilityLabel("\(filter.rawValue), \(count)")
     }
 }
 
