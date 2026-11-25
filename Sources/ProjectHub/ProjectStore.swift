@@ -104,7 +104,7 @@ final class ProjectStore: ObservableObject {
             let projectID = path.hasSuffix("/") ? String(path.dropLast()) : path
             return Project(
                 id: projectID, name: folder.lastPathComponent, path: folder, kind: kind,
-                techSummary: Self.techSummary(package: package, hasPython: hasPython, hasGit: hasGit, isFastAPI: isFastAPI), repositoryURL: remote,
+                techSummary: Self.techSummary(package: package, hasPackage: hasPackage, hasPython: hasPython, isFastAPI: isFastAPI), repositoryURL: remote,
                 branch: branch, changedFiles: changes, description: package?.description,
                 defaultCommand: defaultCommand, defaultPort: 3000 + order
             )
@@ -335,7 +335,7 @@ final class ProjectStore: ObservableObject {
         guard package?.scripts?["dev"] != nil else { return nil }
         return "npm run dev -- --port {port}"
     }
-    private static func techSummary(package: PackageFile?, hasPython: Bool, hasGit: Bool, isFastAPI: Bool) -> String {
+    private static func techSummary(package: PackageFile?, hasPackage: Bool, hasPython: Bool, isFastAPI: Bool) -> String {
         let dependencies = Set(Array((package?.dependencies ?? [:]).keys) + Array((package?.devDependencies ?? [:]).keys))
         if dependencies.contains("next") { return dependencies.contains("typescript") ? "Next.js · TypeScript" : "Next.js" }
         if dependencies.contains("vite") {
@@ -343,8 +343,10 @@ final class ProjectStore: ObservableObject {
                 .compactMap { $0 }.joined(separator: " · ")
         }
         if isFastAPI { return "Python · FastAPI" }
+        if hasPackage && hasPython { return "Node.js · Python" }
         if hasPython { return "Python" }
-        return hasGit ? "Git repository" : "Local project"
+        if hasPackage { return "Node.js" }
+        return "-"
     }
     private static func githubURL(_ raw: String) -> URL? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)

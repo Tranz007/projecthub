@@ -15,6 +15,7 @@ cp .build/release/ProjectHub "$contents/MacOS/ProjectHub"
 cp Resources/Info.plist "$contents/Info.plist"
 cp Resources/AppIcon.icns "$contents/Resources/AppIcon.icns"
 cp -R Resources/TechIcons "$contents/Resources/TechIcons"
+cp -R Resources/RepoIcons "$contents/Resources/RepoIcons"
 codesign --force --sign - --timestamp=none "$bundle"
 
 echo "Built $bundle"

@@ -44,7 +44,7 @@ extension Project {
         if techSummary.contains("TypeScript") { return "typescript" }
         if techSummary.contains("Python") { return "python" }
         if techSummary.contains("Node.js") { return "nodedotjs" }
-        return "git"
+        return "other"
     }
     var displaySymbol: String {
         kind.symbol

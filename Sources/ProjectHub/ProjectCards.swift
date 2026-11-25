@@ -25,20 +25,21 @@ private struct ProjectCard: View {
 
     var body: some View {
         let status = store.status(for: project)
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: project.displaySymbol)
                     .foregroundStyle(project.displayColor)
                     .frame(width: 34, height: 34)
                     .background(project.displayColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(project.name).font(.system(size: 19, weight: .semibold)).lineLimit(1).help(project.hoverDetail)
+                    ProjectTitle(project: project, size: 19)
                     HStack(spacing: 6) {
-                        TechIcon(name: project.techIconName)
+                        if project.techSummary != "-" { TechIcon(name: project.techIconName) }
                         Text(project.techSummary).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 0)
+                if project.changedFiles != nil { RepoBadge(project: project) }
                 Button { store.toggleFavorite(project) } label: {
                     Image(systemName: store.setting(for: project).favorite ? "star.fill" : "star")
                 }.buttonStyle(.plain).accessibilityLabel("Toggle favorite")
@@ -52,18 +53,13 @@ private struct ProjectCard: View {
                     Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : "Stopped")
                 }
                 Spacer()
-                if let branch = project.branch { Text(branch).lineLimit(1) }
-            }.font(.caption).foregroundStyle(.secondary)
-            if status.isRunning || store.recentOutput[project.id]?.isEmpty == false {
-                HStack {
-                    if status.ready, let port = status.port {
-                        Button("Open site · \(port)") { store.openURL(for: project) }.buttonStyle(.link)
-                    }
-                    Spacer()
+                if status.ready {
+                    Button("Open site") { store.openURL(for: project) }.buttonStyle(.link)
+                }
+                if status.isRunning || store.recentOutput[project.id]?.isEmpty == false {
                     Button("Logs") { showingLogs = true }.buttonStyle(.link)
                 }
-                .font(.caption)
-            }
+            }.font(.caption).foregroundStyle(.secondary)
             HStack {
                 Button("Open with \(store.aiToolLabel)") { store.openInAI(project) }
                     .buttonStyle(.bordered)
@@ -86,7 +82,7 @@ private struct ProjectCard: View {
                     .accessibilityLabel("More actions for \(project.name)")
             }
         }
-        .frame(height: 145, alignment: .topLeading)
+        .frame(height: 102, alignment: .topLeading)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.black.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))

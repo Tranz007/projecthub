@@ -135,27 +135,51 @@ struct ContentView: View {
 
 private struct Sidebar: View {
     @EnvironmentObject private var store: ProjectStore
+    @AppStorage("sidebarCollapsed") private var collapsed = false
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 11) {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(spacing: 8) {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable().interpolation(.high).frame(width: 31, height: 31).clipShape(RoundedRectangle(cornerRadius: 8))
-                VStack(alignment: .leading, spacing: 1) { Text("Project Hub").font(.system(size: 18, weight: .bold)); Text("Build more of what matters.").font(.caption).foregroundStyle(.secondary) }
+                if !collapsed {
+                    Text("Project Hub").font(.system(size: 18, weight: .bold)).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Button { collapsed.toggle() } label: {
+                    Image(systemName: collapsed ? "chevron.right" : "chevron.left")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help(collapsed ? "Expand sidebar" : "Collapse sidebar")
             }.padding(.top, 25)
             VStack(spacing: 5) {
-                NavRow(filter: .all, icon: "rectangle.stack")
-                NavRow(filter: .favorites, icon: "heart")
-                NavRow(filter: .running, icon: "play.circle")
+                NavRow(filter: .all, icon: "rectangle.stack", collapsed: collapsed)
+                NavRow(filter: .favorites, icon: "heart", collapsed: collapsed)
+                NavRow(filter: .running, icon: "play.circle", collapsed: collapsed)
             }
             Divider().overlay(Color.white.opacity(0.1))
-            Text("A calmer desk builds a sharper you.").font(.caption).italic().foregroundStyle(.tertiary)
-            Spacer()
-            Button { store.refreshProjects() } label: { Label("Refresh projects", systemImage: "arrow.clockwise") }.buttonStyle(.plain).foregroundStyle(.secondary)
-            SettingsLink { Label("Settings", systemImage: "gearshape") }
-                .buttonStyle(.plain).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 14) {
+                Button { store.refreshProjects() } label: {
+                    if collapsed { Image(systemName: "arrow.clockwise") }
+                    else { Label("Refresh projects", systemImage: "arrow.clockwise") }
+                }
+                .buttonStyle(.plain).help("Refresh projects")
+                SettingsLink {
+                    if collapsed { Image(systemName: "gearshape") }
+                    else { Label("Settings", systemImage: "gearshape") }
+                }
+                .buttonStyle(.plain).help("Settings")
+            }
+            .foregroundStyle(.secondary)
+            if !collapsed {
+                Text("A calmer desk builds a sharper you.").font(.caption).italic().foregroundStyle(.tertiary)
+            }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 18)
-        .frame(width: 225)
+        .padding(.horizontal, collapsed ? 10 : 18)
+        .frame(width: collapsed ? 96 : 225)
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .background(Color.black.opacity(0.20))
     }
@@ -163,13 +187,18 @@ private struct Sidebar: View {
 
 private struct NavRow: View {
     @EnvironmentObject private var store: ProjectStore
-    let filter: ProjectStore.Filter; let icon: String
+    let filter: ProjectStore.Filter; let icon: String; let collapsed: Bool
     var count: Int { filter == .running ? store.projects.filter { store.status(for: $0).isRunning }.count : filter == .favorites ? store.projects.filter { store.setting(for: $0).favorite }.count : store.projects.count }
     var body: some View {
         Button { store.selectedFilter = filter } label: {
-            HStack { Image(systemName: icon).frame(width: 20); Text(filter.rawValue); Spacer(); Text("\(count)").font(.caption).padding(.horizontal, 7).padding(.vertical, 3).background(.white.opacity(0.09), in: Capsule()) }
-                .padding(.horizontal, 12).padding(.vertical, 9).background(store.selectedFilter == filter ? Color.white.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 8))
-        }.buttonStyle(.plain)
+            HStack(spacing: 6) {
+                Image(systemName: icon).frame(width: 20)
+                if !collapsed { Text(filter.rawValue); Spacer(minLength: 0) }
+                Text("\(count)").font(.caption).padding(.horizontal, collapsed ? 5 : 7).padding(.vertical, 3)
+                    .background(.white.opacity(0.09), in: Capsule())
+            }
+                .padding(.horizontal, collapsed ? 8 : 12).padding(.vertical, 9).background(store.selectedFilter == filter ? Color.white.opacity(0.11) : .clear, in: RoundedRectangle(cornerRadius: 8))
+        }.buttonStyle(.plain).help(filter.rawValue)
     }
 }
 
@@ -211,15 +240,18 @@ private struct ProjectRow: View {
                     .foregroundStyle(project.displayColor).font(.title3).frame(width: 30, height: 30)
                     .background(project.displayColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
                 HStack {
-                    Text(project.name).font(.system(size: 17, weight: .semibold)).lineLimit(1).help(project.hoverDetail)
+                    ProjectTitle(project: project, size: 17)
                     Button { store.toggleFavorite(project) } label: {
                         Image(systemName: store.setting(for: project).favorite ? "star.fill" : "star")
                             .foregroundStyle(store.setting(for: project).favorite ? .yellow : .secondary)
                     }.buttonStyle(.plain)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: 7) { TechIcon(name: project.techIconName); Text(project.techSummary).lineLimit(2).foregroundStyle(.secondary).font(.caption) }.frame(width: 150, alignment: .leading)
-            VStack(alignment: .leading, spacing: 4) { HStack(spacing: 5) { Text(project.branch ?? "—"); if project.repositoryURL != nil { Button { store.openRepository(project) } label: { Image(systemName: "link") }.buttonStyle(.plain).foregroundStyle(.blue).help("Open GitHub repository") } }; if let changes = project.changedFiles { Text(changes == 0 ? "Clean" : "\(changes) changed").font(.caption).foregroundStyle(changes == 0 ? Color.secondary : Color.orange) } }.frame(width: 130, alignment: .leading)
+            HStack(spacing: 7) {
+                if project.techSummary != "-" { TechIcon(name: project.techIconName) }
+                Text(project.techSummary).lineLimit(2).foregroundStyle(.secondary).font(.caption)
+            }.frame(width: 150, alignment: .leading)
+            RepoBadge(project: project).frame(width: 130, alignment: .leading)
             VStack(alignment: .leading, spacing: 5) {
                 if store.command(for: project) == nil && !status.isRunning {
                     Text("-").foregroundStyle(.secondary)
