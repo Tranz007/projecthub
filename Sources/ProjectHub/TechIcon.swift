@@ -24,7 +24,7 @@ struct TechStack: View {
         if technologies.isEmpty {
             Text("-").foregroundStyle(.secondary)
         } else {
-            HStack(spacing: 6) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(24), spacing: 6), count: 4), alignment: .leading, spacing: 4) {
                 ForEach(technologies, id: \.self) { technology in
                     TechnologyBadge(name: technology)
                 }

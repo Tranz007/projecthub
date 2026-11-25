@@ -215,12 +215,25 @@ private struct Header: View {
     }
 }
 
+private enum TableColumns {
+    static let tech: CGFloat = 120
+    static let repository: CGFloat = 90
+    static let webServer: CGFloat = 150
+    static let actions: CGFloat = 360
+}
+
 private struct ProjectTable: View {
     @EnvironmentObject private var store: ProjectStore
     let projects: [Project]
     var body: some View {
         VStack(spacing: 0) {
-            HStack { Text("PROJECT"); Spacer(); Text("TECH").frame(width: 150, alignment: .leading); Text("GIT / REPO").frame(width: 130, alignment: .leading); Text("WebServer").frame(width: 180, alignment: .leading); Text("ACTIONS").frame(width: 330, alignment: .leading) }
+            HStack(spacing: 16) {
+                Text("PROJECT").frame(maxWidth: .infinity, alignment: .leading)
+                Text("TECH").frame(width: TableColumns.tech, alignment: .leading)
+                Text("GIT / REPO").frame(width: TableColumns.repository, alignment: .leading)
+                Text("WebServer").frame(width: TableColumns.webServer, alignment: .leading)
+                Text("ACTIONS").frame(width: TableColumns.actions, alignment: .leading)
+            }
                 .font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.horizontal, 18).padding(.vertical, 12)
             ForEach(projects) { project in ProjectRow(project: project); Divider().overlay(Color.white.opacity(0.08)).padding(.horizontal, 18) }
         }
@@ -249,8 +262,8 @@ private struct ProjectRow: View {
                     }.buttonStyle(.plain)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
-            TechStack(technologies: project.technologies).frame(width: 150, alignment: .leading)
-            RepoBadge(project: project).frame(width: 130, alignment: .leading)
+            TechStack(technologies: project.technologies).frame(width: TableColumns.tech, alignment: .leading)
+            RepoBadge(project: project).frame(width: TableColumns.repository, alignment: .leading)
             VStack(alignment: .leading, spacing: 5) {
                 if store.command(for: project) == nil && !status.isRunning {
                     Text("-").foregroundStyle(.secondary)
@@ -265,7 +278,7 @@ private struct ProjectRow: View {
                         Button("Logs") { showingLogs = true }.buttonStyle(.link)
                     }.font(.caption)
                 }
-            }.frame(width: 180, alignment: .leading)
+            }.frame(width: TableColumns.webServer, alignment: .leading)
             HStack(spacing: 8) {
                 Button { store.openInAI(project) } label: { Label("Open with \(store.aiToolLabel)", systemImage: "terminal") }.buttonStyle(SecondaryButton())
                 Button { store.openInEditor(project) } label: { Image(systemName: "arrow.up.forward.app") }.buttonStyle(SecondaryButton()).help("Open in \(store.settings.preferredEditor)")
@@ -281,7 +294,7 @@ private struct ProjectRow: View {
                         .buttonStyle(SecondaryButton())
                 }
             }
-            .frame(width: 370, alignment: .leading)
+            .frame(width: TableColumns.actions, alignment: .leading)
             .popover(isPresented: $showingConfigure) { ConfigureProject(project: project, isPresented: $showingConfigure) }
         }
         .padding(.horizontal, 18).padding(.vertical, 15)
