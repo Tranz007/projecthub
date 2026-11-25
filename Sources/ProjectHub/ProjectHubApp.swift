@@ -254,8 +254,8 @@ private struct Header: View {
 
 private enum TableColumns {
     static let tech: CGFloat = 120
-    static let repository: CGFloat = 90
-    static let webServer: CGFloat = 150
+    static let repository: CGFloat = 72
+    static let webServer: CGFloat = 80
     static let actions: CGFloat = 360
 }
 
@@ -301,23 +301,8 @@ private struct ProjectRow: View {
             }.frame(maxWidth: .infinity, alignment: .leading)
             TechStack(technologies: project.technologies).frame(width: TableColumns.tech, alignment: .leading)
             RepoBadge(project: project).frame(width: TableColumns.repository, alignment: .leading)
-            VStack(alignment: .leading, spacing: 5) {
-                if let exit = store.serviceExits[project.id] {
-                    HStack(spacing: 7) { Circle().fill(.red).frame(width: 8, height: 8); Text(exit.label).foregroundStyle(.red) }
-                } else if store.command(for: project) == nil && !status.isRunning {
-                    Text("-").foregroundStyle(.secondary)
-                } else {
-                    HStack(spacing: 7) { Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 8, height: 8); Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : "Stopped") }
-                }
-                if status.isRunning || store.serviceExits[project.id] != nil || store.recentOutput[project.id]?.isEmpty == false {
-                    HStack(spacing: 10) {
-                        if status.ready, let port = status.port {
-                            Button("localhost:\(port)") { store.openURL(for: project) }.buttonStyle(.link)
-                        }
-                        Button("Logs") { showingLogs = true }.buttonStyle(.link)
-                    }.font(.caption)
-                }
-            }.frame(width: TableColumns.webServer, alignment: .leading)
+            ServerIndicator(project: project)
+                .frame(width: TableColumns.webServer, alignment: .leading)
             HStack(spacing: 8) {
                 Button { store.openInAI(project) } label: { Label("Open with \(store.aiToolLabel)", systemImage: "terminal") }.buttonStyle(SecondaryButton())
                 Button { store.openInEditor(project) } label: { Image(systemName: "arrow.up.forward.app") }.buttonStyle(SecondaryButton()).help("Open in \(store.settings.preferredEditor)")
@@ -331,6 +316,19 @@ private struct ProjectRow: View {
                 } else {
                     Button { store.openInFinder(project) } label: { Label("Open Folder", systemImage: "folder") }
                         .buttonStyle(SecondaryButton())
+                }
+                if status.isRunning || store.serviceExits[project.id] != nil || store.recentOutput[project.id]?.isEmpty == false {
+                    Menu {
+                        if status.ready {
+                            Button("Open site") { store.openURL(for: project) }
+                        }
+                        Button("View logs") { showingLogs = true }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .accessibilityLabel("Server actions for \(project.name)")
                 }
             }
             .frame(width: TableColumns.actions, alignment: .leading)

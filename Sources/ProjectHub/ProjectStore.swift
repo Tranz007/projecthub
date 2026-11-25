@@ -180,6 +180,25 @@ final class ProjectStore: ObservableObject {
         return (false, configuredPort, false, listeningPorts.contains(configuredPort), false)
     }
 
+    func serverHealth(for project: Project) -> ServerHealth {
+        if let exit = serviceExits[project.id] {
+            return .failed("\(exit.label). Open Logs to see what happened.")
+        }
+        let current = status(for: project)
+        if current.isRunning, let port = current.port {
+            if current.ready { return .running(port) }
+            if let service = running[project.id], Date().timeIntervalSince(service.startedAt) >= 10 {
+                return .warning("The process is running, but no server is listening on port \(port). Check Logs.")
+            }
+            return .starting(port)
+        }
+        guard command(for: project) != nil else { return .unavailable }
+        if current.portBusy, let port = current.port {
+            return .warning("Preferred port \(port) is in use. Project Hub will choose another port when started.")
+        }
+        return .stopped
+    }
+
     func save(project: Project, command: String, port: Int, favorite: Bool) {
         settings.projects[project.id] = ProjectSettings(command: command.nilIfEmpty, preferredPort: port, favorite: favorite)
         persistSettings()

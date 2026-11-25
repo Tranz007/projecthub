@@ -25,6 +25,7 @@ private struct ProjectCard: View {
 
     var body: some View {
         let status = store.status(for: project)
+        let health = store.serverHealth(for: project)
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: project.displaySymbol)
@@ -43,15 +44,8 @@ private struct ProjectCard: View {
             }
             Spacer(minLength: 0)
             HStack {
-                if let exit = store.serviceExits[project.id] {
-                    Circle().fill(.red).frame(width: 7, height: 7)
-                    Text(exit.label).foregroundStyle(.red)
-                } else if store.command(for: project) == nil && !status.isRunning {
-                    Text("-")
-                } else {
-                    Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 7, height: 7)
-                    Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : "Stopped")
-                }
+                ServerIndicator(project: project, size: 13)
+                if health.label != "-" { Text(health.label) }
                 Spacer()
                 if status.ready {
                     Button("Open site") { store.openURL(for: project) }.buttonStyle(.link)

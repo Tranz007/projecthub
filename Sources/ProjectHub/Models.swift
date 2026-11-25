@@ -101,3 +101,33 @@ struct ServiceExit {
         reason == .uncaughtSignal ? "Stopped by signal \(code)" : "Exited (code \(code))"
     }
 }
+
+enum ServerHealth {
+    case unavailable
+    case stopped
+    case starting(Int)
+    case running(Int)
+    case warning(String)
+    case failed(String)
+
+    var label: String {
+        switch self {
+        case .unavailable: "-"
+        case .stopped: "Stopped"
+        case .starting: "Starting"
+        case .running: "Running"
+        case .warning: "Issue"
+        case .failed: "Exited"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .unavailable: "No web server configured."
+        case .stopped: "Web server stopped. Use Start to launch it."
+        case .starting(let port): "Starting the web server on port \(port)…"
+        case .running(let port): "Web server running at localhost:\(port)."
+        case .warning(let message), .failed(let message): message
+        }
+    }
+}

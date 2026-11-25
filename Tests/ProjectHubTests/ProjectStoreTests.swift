@@ -26,13 +26,16 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(project.path.standardizedFileURL, projectFolder.standardizedFileURL)
         let restored = ProjectStore(settingsURL: settingsURL, scanFolders: [], preferences: preferences)
         XCTAssertEqual(restored.projects.first?.id, project.id)
+        XCTAssertEqual(store.serverHealth(for: project).label, "-")
         store.save(project: project, command: "echo fixture failure; exit 7", port: 51000, favorite: false)
+        XCTAssertEqual(store.serverHealth(for: project).label, "Stopped")
         store.start(project)
 
         for _ in 0..<100 where store.serviceExits[project.id] == nil {
             try await Task.sleep(for: .milliseconds(50))
         }
         XCTAssertEqual(store.serviceExits[project.id]?.code, 7)
+        XCTAssertEqual(store.serverHealth(for: project).label, "Exited")
         XCTAssertEqual(store.alert?.title, "example server stopped")
         XCTAssertTrue(store.recentOutput[project.id]?.contains("fixture failure") == true)
         XCTAssertNil(store.running[project.id])
@@ -44,5 +47,6 @@ final class ProjectStoreTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(100))
         XCTAssertNil(store.running[project.id])
         XCTAssertNil(store.serviceExits[project.id])
+        XCTAssertEqual(store.serverHealth(for: project).label, "Stopped")
     }
 }
