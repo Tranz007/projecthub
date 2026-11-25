@@ -389,7 +389,10 @@ private struct ProjectTable: View {
                 Text("EXTERNAL").frame(width: TableColumns.hosted)
                 Text("ACTIONS").frame(width: TableColumns.actions, alignment: .leading)
             }
-                .font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.vertical, 12)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.top, 24)
+                .padding(.bottom, 12)
             ForEach(projects) { project in ProjectRow(project: project); Divider().overlay(Color.white.opacity(0.08)) }
         }
     }

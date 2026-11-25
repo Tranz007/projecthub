@@ -7,7 +7,6 @@ struct ServerIndicator: View {
     var size: CGFloat = 17
 
     @State private var showingDetail = false
-    @State private var rotating = false
 
     var body: some View {
         let health = store.serverHealth(for: project)
@@ -20,12 +19,13 @@ struct ServerIndicator: View {
             case .starting:
                 Image(systemName: "clock.arrow.circlepath").foregroundStyle(.secondary)
             case .running:
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .foregroundStyle(.green)
-                    .rotationEffect(.degrees(rotating && !reduceMotion ? 360 : 0))
-                    .animation(reduceMotion ? nil : .linear(duration: 2).repeatForever(autoreverses: false), value: rotating)
-                    .onAppear { rotating = true }
-                    .onDisappear { rotating = false }
+                TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: reduceMotion)) { timeline in
+                    let phase = timeline.date.timeIntervalSinceReferenceDate
+                        .truncatingRemainder(dividingBy: 2) / 2
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .foregroundStyle(.green)
+                        .rotationEffect(.degrees(reduceMotion ? 0 : phase * 360))
+                }
             case .warning:
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             case .failed:
