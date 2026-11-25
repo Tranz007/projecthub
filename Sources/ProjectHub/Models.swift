@@ -165,7 +165,7 @@ enum ServerHealth {
         case .unavailable: "No web server configured."
         case .stopped: "Web server stopped. Use Start to launch it."
         case .starting(let port): "Starting the web server on port \(port)…"
-        case .running(let port): "Web server running at localhost:\(port)."
+        case .running(let port): "Web server running at localhost:\(port). Select the icon to open it in your browser."
         case .warning(let message), .failed(let message): message
         }
     }

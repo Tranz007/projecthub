@@ -382,8 +382,9 @@ final class ProjectStore: ObservableObject {
     func openInFinder(_ project: Project) { NSWorkspace.shared.activateFileViewerSelecting([project.path]) }
     func openURL(for project: Project) {
         let current = status(for: project)
-        guard current.ready, let port = current.port else { return }
-        NSWorkspace.shared.open(URL(string: "http://localhost:\(port)")!)
+        guard current.ready, let port = current.port,
+              let url = URL(string: "http://localhost:\(port)") else { return }
+        openExternalURL(url)
     }
     func openRepository(_ project: Project) {
         guard let url = project.repositoryURL else { return }

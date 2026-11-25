@@ -18,14 +18,18 @@ struct ServerIndicator: View {
                 Image(systemName: "square.fill").foregroundStyle(.gray)
             case .starting:
                 Image(systemName: "clock.arrow.circlepath").foregroundStyle(.secondary)
-            case .running:
-                TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: reduceMotion)) { timeline in
-                    let phase = timeline.date.timeIntervalSinceReferenceDate
-                        .truncatingRemainder(dividingBy: 2) / 2
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .foregroundStyle(.green)
-                        .rotationEffect(.degrees(reduceMotion ? 0 : phase * 360))
+            case .running(let port):
+                Button { store.openURL(for: project) } label: {
+                    TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: reduceMotion)) { timeline in
+                        let phase = timeline.date.timeIntervalSinceReferenceDate
+                            .truncatingRemainder(dividingBy: 2) / 2
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .foregroundStyle(.green)
+                            .rotationEffect(.degrees(reduceMotion ? 0 : phase * 360))
+                    }
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open \(project.name) at localhost:\(port)")
             case .warning:
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             case .failed:
