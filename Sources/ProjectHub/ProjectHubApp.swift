@@ -120,7 +120,7 @@ struct ContentView: View {
                         } else {
                             ScrollView(.horizontal) {
                                 ProjectTable(projects: store.visibleProjects)
-                                    .frame(minWidth: 1050)
+                                    .frame(minWidth: max(1050, geometry.size.width - 60))
                             }
                         }
                         }
@@ -140,7 +140,7 @@ private struct Sidebar: View {
             HStack(spacing: 11) {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable().interpolation(.high).frame(width: 31, height: 31).clipShape(RoundedRectangle(cornerRadius: 8))
-                VStack(alignment: .leading, spacing: 1) { Text("Project Hub").fontWeight(.bold); Text("Build more of what matters.").font(.caption).foregroundStyle(.secondary) }
+                VStack(alignment: .leading, spacing: 1) { Text("Project Hub").font(.system(size: 18, weight: .bold)); Text("Build more of what matters.").font(.caption).foregroundStyle(.secondary) }
             }.padding(.top, 25)
             VStack(spacing: 5) {
                 NavRow(filter: .all, icon: "rectangle.stack")
@@ -189,7 +189,7 @@ private struct ProjectTable: View {
     let projects: [Project]
     var body: some View {
         VStack(spacing: 0) {
-            HStack { Text("PROJECT"); Spacer(); Text("TECH").frame(width: 150, alignment: .leading); Text("GIT / REPO").frame(width: 130, alignment: .leading); Text("STATUS").frame(width: 180, alignment: .leading); Text("ACTIONS").frame(width: 330, alignment: .leading) }
+            HStack { Text("PROJECT"); Spacer(); Text("TECH").frame(width: 150, alignment: .leading); Text("GIT / REPO").frame(width: 130, alignment: .leading); Text("WebServer").frame(width: 180, alignment: .leading); Text("ACTIONS").frame(width: 330, alignment: .leading) }
                 .font(.caption.weight(.medium)).foregroundStyle(.secondary).padding(.horizontal, 18).padding(.vertical, 12)
             ForEach(projects) { project in ProjectRow(project: project); Divider().overlay(Color.white.opacity(0.08)).padding(.horizontal, 18) }
         }
@@ -210,27 +210,26 @@ private struct ProjectRow: View {
                 Image(systemName: project.displaySymbol)
                     .foregroundStyle(project.displayColor).font(.title3).frame(width: 30, height: 30)
                     .background(project.displayColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(project.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
-                        Button { store.toggleFavorite(project) } label: {
-                            Image(systemName: store.setting(for: project).favorite ? "star.fill" : "star")
-                                .foregroundStyle(store.setting(for: project).favorite ? .yellow : .secondary)
-                        }.buttonStyle(.plain)
-                    }
-                    if let description = project.description, !description.isEmpty {
-                        Text(description).lineLimit(1).font(.caption).foregroundStyle(.secondary)
-                    }
+                HStack {
+                    Text(project.name).font(.system(size: 17, weight: .semibold)).lineLimit(1).help(project.hoverDetail)
+                    Button { store.toggleFavorite(project) } label: {
+                        Image(systemName: store.setting(for: project).favorite ? "star.fill" : "star")
+                            .foregroundStyle(store.setting(for: project).favorite ? .yellow : .secondary)
+                    }.buttonStyle(.plain)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 7) { TechIcon(name: project.techIconName); Text(project.techSummary).lineLimit(2).foregroundStyle(.secondary).font(.caption) }.frame(width: 150, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) { HStack(spacing: 5) { Text(project.branch ?? "—"); if project.repositoryURL != nil { Button { store.openRepository(project) } label: { Image(systemName: "link") }.buttonStyle(.plain).foregroundStyle(.blue).help("Open GitHub repository") } }; if let changes = project.changedFiles { Text(changes == 0 ? "Clean" : "\(changes) changed").font(.caption).foregroundStyle(changes == 0 ? Color.secondary : Color.orange) } }.frame(width: 130, alignment: .leading)
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 7) { Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 8, height: 8); Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : (store.command(for: project) == nil ? "No web server" : "Stopped")) }
+                if store.command(for: project) == nil && !status.isRunning {
+                    Text("-").foregroundStyle(.secondary)
+                } else {
+                    HStack(spacing: 7) { Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 8, height: 8); Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : "Stopped") }
+                }
                 if status.isRunning || store.recentOutput[project.id]?.isEmpty == false {
                     HStack(spacing: 10) {
                         if status.ready, let port = status.port {
-                        Button("localhost:\(port)") { store.openURL(for: project) }.buttonStyle(.link)
+                            Button("localhost:\(port)") { store.openURL(for: project) }.buttonStyle(.link)
                         }
                         Button("Logs") { showingLogs = true }.buttonStyle(.link)
                     }.font(.caption)

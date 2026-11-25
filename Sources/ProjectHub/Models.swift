@@ -32,6 +32,11 @@ struct Project: Identifiable, Hashable {
 }
 
 extension Project {
+    var hoverDetail: String {
+        if let description, !description.isEmpty { return description }
+        return path.path(percentEncoded: false)
+    }
+
     var techIconName: String {
         if techSummary.contains("FastAPI") { return "fastapi" }
         if techSummary.contains("Next.js") { return "nextdotjs" }

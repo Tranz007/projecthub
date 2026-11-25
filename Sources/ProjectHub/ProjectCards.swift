@@ -25,14 +25,14 @@ private struct ProjectCard: View {
 
     var body: some View {
         let status = store.status(for: project)
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: project.displaySymbol)
                     .foregroundStyle(project.displayColor)
                     .frame(width: 34, height: 34)
                     .background(project.displayColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(project.name).font(.system(size: 19, weight: .semibold)).lineLimit(1)
+                    Text(project.name).font(.system(size: 19, weight: .semibold)).lineLimit(1).help(project.hoverDetail)
                     HStack(spacing: 6) {
                         TechIcon(name: project.techIconName)
                         Text(project.techSummary).font(.caption).foregroundStyle(.secondary)
@@ -43,18 +43,21 @@ private struct ProjectCard: View {
                     Image(systemName: store.setting(for: project).favorite ? "star.fill" : "star")
                 }.buttonStyle(.plain).accessibilityLabel("Toggle favorite")
             }
-            Text(project.description ?? project.path.path(percentEncoded: false))
-                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            Spacer(minLength: 0)
             HStack {
-                Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 7, height: 7)
-                Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : "Stopped")
+                if store.command(for: project) == nil && !status.isRunning {
+                    Text("-")
+                } else {
+                    Circle().fill(status.ready ? .green : status.isRunning ? .orange : .gray).frame(width: 7, height: 7)
+                    Text(status.ready ? "Running" : status.isRunning ? "Starting" : status.portBusy ? "Port in use" : "Stopped")
+                }
                 Spacer()
                 if let branch = project.branch { Text(branch).lineLimit(1) }
             }.font(.caption).foregroundStyle(.secondary)
             if status.isRunning || store.recentOutput[project.id]?.isEmpty == false {
                 HStack {
                     if status.ready, let port = status.port {
-                    Button("Open site · \(port)") { store.openURL(for: project) }.buttonStyle(.link)
+                        Button("Open site · \(port)") { store.openURL(for: project) }.buttonStyle(.link)
                     }
                     Spacer()
                     Button("Logs") { showingLogs = true }.buttonStyle(.link)
@@ -83,6 +86,7 @@ private struct ProjectCard: View {
                     .accessibilityLabel("More actions for \(project.name)")
             }
         }
+        .frame(height: 145, alignment: .topLeading)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.black.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
