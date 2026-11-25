@@ -27,8 +27,8 @@ struct ProjectTitle: View {
 }
 
 struct RepoBadge: View {
+    @EnvironmentObject private var store: ProjectStore
     let project: Project
-    @State private var showingDetails = false
 
     private var changeSummary: String {
         guard let count = project.changedFiles else { return "Git status unavailable" }
@@ -45,33 +45,15 @@ struct RepoBadge: View {
     var body: some View {
         if project.changedFiles != nil {
             indicator
-            .help(detail)
-            .onHover { showingDetails = $0 }
-            .popover(isPresented: $showingDetails, arrowEdge: .bottom) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(project.name).font(.headline)
-                    Label(project.branch ?? "No branch", systemImage: "arrow.triangle.branch")
-                    Text(changeSummary)
-                    if let url = project.repositoryURL {
-                        Text(url.absoluteString)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    } else {
-                        Text("No GitHub remote").foregroundStyle(.secondary)
-                    }
-                }
-                .padding(16)
-                .frame(width: 240, alignment: .leading)
-            }
+                .help(detail)
         } else {
             Text("—").foregroundStyle(.secondary)
         }
     }
 
     @ViewBuilder private var indicator: some View {
-        if let url = project.repositoryURL {
-            Link(destination: url) {
+        if project.repositoryURL != nil {
+            Button { store.openRepository(project) } label: {
                 RepoIcon(name: "github")
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())

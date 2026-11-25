@@ -331,7 +331,28 @@ final class ProjectStore: ObservableObject {
         guard current.ready, let port = current.port else { return }
         NSWorkspace.shared.open(URL(string: "http://localhost:\(port)")!)
     }
-    func openRepository(_ project: Project) { if let url = project.repositoryURL { NSWorkspace.shared.open(url) } }
+    func openRepository(_ project: Project) {
+        guard let url = project.repositoryURL else { return }
+        openExternalURL(url)
+    }
+
+    func openHostedSite(_ project: Project) {
+        guard let address = setting(for: project).hostedURL,
+              let url = URL(string: address), ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+              url.host != nil else { return }
+        openExternalURL(url)
+    }
+
+    private func openExternalURL(_ url: URL) {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.open(url, configuration: configuration) { [weak self] _, error in
+            guard let error else { return }
+            Task { @MainActor in
+                self?.alert = AppAlert(title: "Could not open link", message: error.localizedDescription)
+            }
+        }
+    }
 
     private func refreshPortSnapshot() {
         DispatchQueue.global(qos: .utility).async { [weak self] in
