@@ -33,10 +33,7 @@ private struct ProjectCard: View {
                     .background(project.displayColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
                 VStack(alignment: .leading, spacing: 4) {
                     ProjectTitle(project: project, size: 19)
-                    HStack(spacing: 6) {
-                        if project.techSummary != "-" { TechIcon(name: project.techIconName) }
-                        Text(project.techSummary).font(.caption).foregroundStyle(.secondary)
-                    }
+                    TechStack(technologies: project.technologies)
                 }
                 Spacer(minLength: 0)
                 if project.changedFiles != nil { RepoBadge(project: project) }

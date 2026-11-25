@@ -37,14 +37,8 @@ extension Project {
         return path.path(percentEncoded: false)
     }
 
-    var techIconName: String {
-        if techSummary.contains("FastAPI") { return "fastapi" }
-        if techSummary.contains("Next.js") { return "nextdotjs" }
-        if techSummary.contains("Vite") { return "typescript" }
-        if techSummary.contains("TypeScript") { return "typescript" }
-        if techSummary.contains("Python") { return "python" }
-        if techSummary.contains("Node.js") { return "nodedotjs" }
-        return "other"
+    var technologies: [String] {
+        techSummary == "-" ? [] : techSummary.components(separatedBy: " · ")
     }
     var displaySymbol: String {
         kind.symbol

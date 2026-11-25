@@ -142,6 +142,7 @@ private struct Sidebar: View {
             HStack(spacing: 8) {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable().interpolation(.high).frame(width: 31, height: 31).clipShape(RoundedRectangle(cornerRadius: 8))
+                    .padding(.leading, collapsed ? 3 : 6)
                 if !collapsed {
                     Text("Project Hub").font(.system(size: 18, weight: .bold)).lineLimit(1)
                 }
@@ -173,6 +174,7 @@ private struct Sidebar: View {
                 .buttonStyle(.plain).help("Settings")
             }
             .foregroundStyle(.secondary)
+            .padding(.leading, collapsed ? 12 : 15)
             if !collapsed {
                 Text("A calmer desk builds a sharper you.").font(.caption).italic().foregroundStyle(.tertiary)
             }
@@ -247,10 +249,7 @@ private struct ProjectRow: View {
                     }.buttonStyle(.plain)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: 7) {
-                if project.techSummary != "-" { TechIcon(name: project.techIconName) }
-                Text(project.techSummary).lineLimit(2).foregroundStyle(.secondary).font(.caption)
-            }.frame(width: 150, alignment: .leading)
+            TechStack(technologies: project.technologies).frame(width: 150, alignment: .leading)
             RepoBadge(project: project).frame(width: 130, alignment: .leading)
             VStack(alignment: .leading, spacing: 5) {
                 if store.command(for: project) == nil && !status.isRunning {
