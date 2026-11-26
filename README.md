@@ -1,6 +1,4 @@
-# ProjectHub
-
-<img src="Resources/AppIcon.png" alt="Project Hub app icon" width="96" height="96">
+<h1 align="center"><img src="Resources/AppIcon.png" alt="Project Hub logo" width="64" height="64"> Project Hub</h1>
 
 ProjectHub is a local macOS app for finding code projects, opening them in an editor or AI command-line tool, and starting development servers.
 
