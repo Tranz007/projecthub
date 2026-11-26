@@ -346,29 +346,74 @@ final class ProjectStore: ObservableObject {
 
     func openInAI(_ project: Project) {
         let command: String
+        let executable: String?
         switch settings.aiTool {
         case "Codex":
-            let bundled = "/Applications/ChatGPT.app/Contents/Resources/codex"
-            command = FileManager.default.isExecutableFile(atPath: bundled) ? shellQuote(bundled) : "codex"
-        case "Claude Code": command = "claude"
-        case "Gemini CLI": command = "gemini"
-        case "Custom": command = settings.customAICommand.trimmingCharacters(in: .whitespacesAndNewlines)
-        default: command = ""
+            let bundled = [
+                "/Applications/ChatGPT.app/Contents/Resources/codex",
+                "\(NSHomeDirectory())/Applications/ChatGPT.app/Contents/Resources/codex"
+            ].first(where: { FileManager.default.isExecutableFile(atPath: $0) })
+            if let bundled {
+                command = shellQuote(bundled)
+                executable = nil
+            } else {
+                command = "codex"
+                executable = "codex"
+            }
+        case "Claude Code": command = "claude"; executable = "claude"
+        case "Gemini CLI": command = "gemini"; executable = "gemini"
+        case "Custom":
+            command = settings.customAICommand.trimmingCharacters(in: .whitespacesAndNewlines)
+            executable = nil
+        default: command = ""; executable = nil
         }
         guard !command.isEmpty else {
             alert = AppAlert(title: "Set up an AI tool", message: "Choose a tool or enter a custom command in Settings.")
+            return
+        }
+        if let executable {
+            let toolName = settings.aiTool
+            Task { [weak self] in
+                let available = await Task.detached { Self.commandIsAvailable(executable) }.value
+                guard let self else { return }
+                if available {
+                    self.openTerminal(project, command: command)
+                } else {
+                    self.alert = AppAlert(
+                        title: "\(toolName) is not installed",
+                        message: "Install \(toolName), or choose another AI tool in Project Hub Settings (⌘,)."
+                    )
+                }
+            }
             return
         }
         openTerminal(project, command: command)
     }
 
     func openInEditor(_ project: Project) {
-        let path = settings.preferredEditor == "Custom" ? settings.customEditorPath : "/Applications/\(settings.preferredEditor).app"
-        guard !path.isEmpty, FileManager.default.fileExists(atPath: path) else {
-            alert = AppAlert(title: "Editor not found", message: "Choose an installed editor in Settings.")
+        let name = settings.preferredEditor
+        let paths = name == "Custom"
+            ? [settings.customEditorPath]
+            : ["/Applications/\(name).app", "\(NSHomeDirectory())/Applications/\(name).app"]
+        guard let path = paths.first(where: { FileManager.default.fileExists(atPath: $0) }) else {
+            alert = AppAlert(
+                title: "\(name == "Custom" ? "Editor" : name) is not installed",
+                message: "Install the editor, or choose another one in Project Hub Settings (⌘,). You can also use Open Folder."
+            )
             return
         }
         openApplication(at: URL(filePath: path), project: project.path)
+    }
+
+    nonisolated private static func commandIsAvailable(_ name: String) -> Bool {
+        let task = Process()
+        task.executableURL = URL(filePath: "/bin/zsh")
+        task.arguments = ["-lic", "command -v -- \(name) >/dev/null 2>&1"]
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError = FileHandle.nullDevice
+        guard (try? task.run()) != nil else { return false }
+        task.waitUntilExit()
+        return task.terminationStatus == 0
     }
     private func openTerminal(_ project: Project, command: String?) {
         let initial = "cd \(shellQuote(project.path.path()))"

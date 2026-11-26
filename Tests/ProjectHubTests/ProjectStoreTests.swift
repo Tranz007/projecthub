@@ -4,6 +4,23 @@ import XCTest
 
 @MainActor
 final class ProjectStoreTests: XCTestCase {
+    func testMissingEditorShowsSetupHelp() {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ProjectHubMissingEditor-\(UUID().uuidString)")
+        let store = ProjectStore(settingsURL: root.appending(path: "settings.json"), scanFolders: [])
+        store.settings.preferredEditor = "Custom"
+        store.settings.customEditorPath = root.appending(path: "Absent.app").path()
+        let project = Project(
+            id: root.path(), name: "Fixture", path: root, kind: .git,
+            techSummary: "Git", repositoryURL: nil, branch: nil, changedFiles: nil,
+            description: nil, defaultCommand: nil, defaultPort: 48701
+        )
+
+        store.openInEditor(project)
+
+        XCTAssertEqual(store.alert?.title, "Editor is not installed")
+        XCTAssertTrue(store.alert?.message.contains("Settings") == true)
+    }
+
     func testIPv6LocalServerIsDetectedAsRunning() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "ProjectHubIPv6-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
