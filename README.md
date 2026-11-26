@@ -14,6 +14,8 @@ Download the Universal macOS ZIP from the [latest release](https://github.com/Tr
 
 On first launch, choose a folder to scan, add an individual project, or scan the immediate subfolders of your Desktop.
 
+Once you choose a scan folder, new projects created directly inside it appear without being added individually. Project Hub checks selected folders when it opens and when you return to it after a short interval; use **Refresh projects** to check immediately.
+
 ## What you can do
 
 ### Find and browse projects
