@@ -12,7 +12,7 @@ When projects live in different folders, getting back to work means finding the 
 
 Download the Universal macOS ZIP from the [latest release](https://github.com/Tranz007/projecthub/releases/latest). Project Hub requires macOS 14 or later and runs on Intel and Apple silicon Macs. Unzip the download, move **Project Hub.app** to Applications, and open it. The release is signed with Developer ID and notarized by Apple.
 
-On first launch, choose a folder to scan, add an individual project, or scan the immediate subfolders of your Desktop. The download does not include the maintainer's projects or settings.
+On first launch, choose a folder to scan, add an individual project, or scan the immediate subfolders of your Desktop.
 
 ## What you can do
 
