@@ -79,7 +79,7 @@ private struct ProjectCard: View {
                     .accessibilityLabel("More actions for \(project.name)")
             }
         }
-        .frame(height: 102, alignment: .topLeading)
+        .frame(minHeight: 120, alignment: .topLeading)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.black.opacity(0.13), in: RoundedRectangle(cornerRadius: 12))
