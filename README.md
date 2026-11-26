@@ -2,7 +2,7 @@
 
 ProjectHub is a local macOS app for finding code projects, opening them in an editor or AI command-line tool, and starting development servers.
 
-![Project Hub showing a public example project](docs/images/project-hub-list.png)
+![Project Hub showing a list of local projects](docs/images/project-hub-list.png)
 
 ## Download and install
 
