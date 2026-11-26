@@ -11,3 +11,7 @@ jobs:
         run: |
           swift build -c release
           swift test
+      - name: Verify Universal app
+        run: |
+          ./script/build_and_run.sh --build
+          lipo "dist/Project Hub.app/Contents/MacOS/ProjectHub" -verify_arch x86_64 arm64

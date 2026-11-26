@@ -15,8 +15,7 @@ struct ProjectHubApp: App {
             }
             defaults.set(layoutVersion, forKey: "windowLayoutVersion")
         }
-        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-           let icon = NSImage(contentsOf: iconURL) {
+        if let icon = ProjectHubIcon.image {
             NSApplication.shared.applicationIconImage = icon
         }
     }
@@ -65,12 +64,22 @@ private final class ProjectHubAppDelegate: NSObject, NSApplicationDelegate {
     weak var store: ProjectStore?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if let icon = ProjectHubIcon.image {
+            NSApplication.shared.applicationIconImage = icon
+        }
         ProjectHubWindowLayout.apply(after: 0.2)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         store?.stopAll()
     }
+}
+
+private enum ProjectHubIcon {
+    static let image: NSImage? = {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") else { return nil }
+        return NSImage(contentsOf: url)
+    }()
 }
 
 private enum ProjectHubWindowLayout {
@@ -158,7 +167,6 @@ struct ContentView: View {
                                 ProjectTable(projects: store.visibleProjects)
                                     .frame(minWidth: max(1050, geometry.size.width - 60))
                             }
-                            .id(sidebarCollapsed)
                         }
                         }
                         .padding(30)
@@ -166,7 +174,6 @@ struct ContentView: View {
                 }
             }
             .frame(width: window.size.width - (sidebarCollapsed ? 76 : 225) - 1)
-            .id(sidebarCollapsed)
         }
         }
         .background(Color(red: 0.055, green: 0.068, blue: 0.078))
@@ -191,7 +198,7 @@ private struct Sidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 8) {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
+                Image(nsImage: ProjectHubIcon.image ?? NSApplication.shared.applicationIconImage)
                     .resizable().interpolation(.high).frame(width: 35, height: 35).clipShape(RoundedRectangle(cornerRadius: 8))
                     .padding(.leading, collapsed ? 0 : 4)
                     .accessibilityLabel("Project Hub")

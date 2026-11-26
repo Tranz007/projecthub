@@ -7,17 +7,26 @@ bundle="$root/dist/Project Hub.app"
 contents="$bundle/Contents"
 
 cd "$root"
-swift build -c release
+architectures=(x86_64 arm64)
+for architecture in "${architectures[@]}"; do
+  triple="${architecture}-apple-macosx14.0"
+  scratch="$root/.build/universal-$architecture"
+  swift build -c release --triple "$triple" --scratch-path "$scratch"
+  binary_dir="$(swift build -c release --triple "$triple" --scratch-path "$scratch" --show-bin-path)"
+  binaries+=("$binary_dir/ProjectHub")
+done
+
 mkdir -p "$root/dist"
 rm -rf "$bundle"
 mkdir -p "$contents/MacOS" "$contents/Resources"
-cp .build/release/ProjectHub "$contents/MacOS/ProjectHub"
+lipo -create "${binaries[@]}" -output "$contents/MacOS/ProjectHub"
 cp Resources/Info.plist "$contents/Info.plist"
 cp Resources/AppIcon.icns "$contents/Resources/AppIcon.icns"
 cp -R Resources/TechIcons "$contents/Resources/TechIcons"
 cp -R Resources/RepoIcons "$contents/Resources/RepoIcons"
 cp -R Resources/HostIcons "$contents/Resources/HostIcons"
 codesign --force --sign - --timestamp=none "$bundle"
+codesign --verify --deep --strict "$bundle"
 
 echo "Built $bundle"
 case "$mode" in
